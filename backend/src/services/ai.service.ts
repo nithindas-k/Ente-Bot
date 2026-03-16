@@ -27,7 +27,18 @@ export class AIService implements IAIService {
     }
 
     async analyzePersonality(rawChat: string): Promise<string> {
-        const prompt = `Analyze this chat sample representation of a person's speaking style. Generate a concise set of system instructions (prompt) for an AI to mimic this style exactly. Keep it casual and brief:\n\n${rawChat}`;
+        // Truncate to avoid context window limits (last 10k chars is plenty for style)
+        const truncatedChat = rawChat.length > 10000 ? rawChat.substring(rawChat.length - 10000) : rawChat;
+        
+        const prompt = `Analyze this WhatsApp chat history to learn a person's unique speaking style. 
+        
+        CRITICAL INSTRUCTIONS:
+        1. IGNORE metadata like dates, times, and sender names (e.g., "4/11/25, 7:30 in the evening - Nithin:").
+        2. FOCUS on the content: vocabulary, slang (e.g., 'mone', 'da', 'athe'), sentence length, and emoji habits.
+        3. OBSERVE the mix of languages (e.g., Manglish/Malayalam-English mix).
+        4. Capture the VIBE: Is it helpful, casual, focused on coding/study, or energetic?
+
+        Generate a concise "System Prompt" (under 150 words) that instructs an AI how to act like this person. Use second-person "You are..." format:\n\n${truncatedChat}`;
         
         try {
             const response = await (groq as any).chat.completions.create({
@@ -41,7 +52,10 @@ export class AIService implements IAIService {
             return response.choices[0]?.message?.content || "";
         } catch (error: any) {
             console.error(`[AI Service] Analysis Error: ${error.message}`);
-            return "Error analyzing personality";
+            if (error.message?.includes('401')) {
+                return "Error: Missing or Invalid GROQ_API_KEY. Please add your key to the .env file.";
+            }
+            return "Error: AI could not analyze the chat. The file might be too large or the API is unavailable.";
         }
     }
 }

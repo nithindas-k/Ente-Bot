@@ -13,7 +13,7 @@ export interface IPersonality extends Document {
 
 const PersonalitySchema = new Schema<IPersonality>({
     contactId: { type: Schema.Types.ObjectId, ref: 'Contact', required: true, unique: true },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
     systemPrompt: { type: String, required: true },
     phrases: [{ type: String }],
     emojiStyle: { type: String, default: 'Casual' },

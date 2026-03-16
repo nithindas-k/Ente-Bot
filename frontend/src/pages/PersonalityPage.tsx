@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Save, BrainCircuit, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import axios from "axios";
+import { FileUpload } from "@/components/FileUpload";
 
 export default function PersonalityPage() {
     const { contactId } = useParams();
@@ -43,7 +44,7 @@ export default function PersonalityPage() {
     };
 
     const handleTrain = async () => {
-        if (!chatSample.trim()) return alert("Please paste some chat samples first.");
+        if (!chatSample.trim()) return alert("Please upload or paste some chat samples first.");
         setIsTraining(true);
         try {
             const response = await axios.post(`http://localhost:5000/api/personalities/${contactId}/train`, { rawChat: chatSample });
@@ -71,7 +72,7 @@ export default function PersonalityPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Manual Editor */}
-                <Card className="bg-neutral-900 border-neutral-800 text-white">
+                <Card className="bg-neutral-900 border-neutral-800 text-white shadow-xl shadow-black/50">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center space-x-2">
                             <span>System Instructions</span>
@@ -79,16 +80,16 @@ export default function PersonalityPage() {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <textarea 
-                            rows={10} 
+                            rows={12} 
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                             placeholder="e.g. You are a helpful assistant. Keep replies short and use emojis."
-                            className="w-full rounded-lg bg-neutral-800 border border-neutral-700 p-4 text-sm text-white focus:outline-emerald-500 transition-all"
+                            className="w-full rounded-lg bg-neutral-800 border border-neutral-700 p-4 text-sm text-white focus:outline-emerald-500 transition-all resize-none"
                         />
                         <Button 
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center space-x-2 h-11"
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center space-x-2 h-11 shadow-lg shadow-emerald-900/20"
                         >
                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                             <span>{isSaving ? "Saving..." : "Save Instructions"}</span>
@@ -97,37 +98,43 @@ export default function PersonalityPage() {
                 </Card>
 
                 {/* AI Trainer */}
-                <Card className="bg-neutral-900 border-emerald-900/30 bg-gradient-to-br from-neutral-900 to-emerald-950/20 text-white">
+                <Card className="bg-neutral-900 border-emerald-900/30 bg-gradient-to-br from-neutral-900 to-emerald-950/20 text-white shadow-xl shadow-emerald-900/10">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center space-x-2 text-emerald-400">
                             <BrainCircuit className="w-5 h-5" />
                             <span>AI Style Trainer</span>
                         </CardTitle>
-                        <p className="text-xs text-neutral-500">Paste past chat logs here. The AI will analyze the tone, slang, and emojis to automatically write the instructions above.</p>
+                        <p className="text-xs text-neutral-500 mt-1">Upload a WhatsApp export or paste logs below for deep AI style analysis.</p>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                        <textarea 
-                            rows={10} 
-                            value={chatSample}
-                            onChange={(e) => setChatSample(e.target.value)}
-                            placeholder="John: Hey how are u?&#10;Me: I'm good bro, u?&#10;John: Chillin..."
-                            className="w-full rounded-lg bg-neutral-950/50 border border-emerald-900/20 p-4 text-sm text-neutral-300 focus:outline-emerald-500 transition-all font-mono"
-                        />
-                        <Button 
-                            onClick={handleTrain}
-                            disabled={isTraining}
-                            className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center justify-center space-x-2 h-11"
-                        >
-                            {isTraining ? <Loader2 className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
-                            <span>{isTraining ? "AI is Analyzing..." : "Train from Chat Sample"}</span>
-                        </Button>
-                        
-                        {lastTrained && (
-                            <div className="flex items-center justify-center space-x-2 text-[10px] text-neutral-500 mt-2 italic">
-                                <CheckCircle className="w-3 h-3" />
-                                <span>Last trained: {new Date(lastTrained).toLocaleString()}</span>
-                            </div>
-                        )}
+                    <CardContent className="space-y-6">
+                        {/* Premium Upload Component */}
+                        <FileUpload onFileSelect={(content) => setChatSample(content)} />
+
+                        <div className="space-y-4">
+                            <textarea 
+                                rows={6} 
+                                value={chatSample}
+                                onChange={(e) => setChatSample(e.target.value)}
+                                placeholder="Logs will appear here after upload, or you can paste them manually..."
+                                className="w-full rounded-lg bg-neutral-950/50 border border-emerald-900/20 p-4 text-sm text-neutral-300 focus:outline-emerald-500 transition-all font-mono resize-none"
+                            />
+                            
+                            <Button 
+                                onClick={handleTrain}
+                                disabled={isTraining}
+                                className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center justify-center space-x-2 h-11"
+                            >
+                                {isTraining ? <Loader2 className="w-4 h-4 animate-spin" /> : <BrainCircuit className="w-4 h-4" />}
+                                <span>{isTraining ? "Analyzing Personality..." : "Train from Chat History"}</span>
+                            </Button>
+                            
+                            {lastTrained && (
+                                <div className="flex items-center justify-center space-x-2 text-[10px] text-neutral-500 mt-2 italic">
+                                    <CheckCircle className="w-3 h-3 text-emerald-500" />
+                                    <span>Last trained: {new Date(lastTrained).toLocaleString()}</span>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>

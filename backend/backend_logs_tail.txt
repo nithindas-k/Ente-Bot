@@ -1,4 +1,49 @@
-﻿    at Client.initialize 
+﻿[dotenv@17.3.1] injecting env (6) from .env -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+[Database] Connected to cluster0-shard-00-00.run9n.mongodb.net
+[Server] running on port 5000
+node.exe : C:\Users\nithi\OneDrive\Documents\Side 
+Project\Ente Bot\backend\node_modules\puppeteer-core\src\nod
+e\BrowserLauncher.ts:534
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (C:\Users\nithi 
+   \...Launcher.ts:534:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+          throw new Error(
+                ^
+Error: Could not find Chrome (ver. 146.0.7680.76). This can 
+occur if either
+ 1. you did not perform an installation before running the 
+script (e.g. `npx puppeteer browsers install chrome`) or
+ 2. your cache path is incorrectly configured (which is: 
+C:\Users\nithi\.cache\puppeteer).
+For (2), check out our guide on configuring puppeteer at 
+https://pptr.dev/guides/configuration.
+    at ChromeLauncher.resolveExecutablePath 
+(C:\Users\nithi\OneDrive\Documents\Side Project\Ente Bot\bac
+kend\node_modules\puppeteer-core\src\node\BrowserLauncher.ts
+:534:17)
+    at ChromeLauncher.computeLaunchArguments 
+(C:\Users\nithi\OneDrive\Documents\Side Project\Ente Bot\bac
+kend\node_modules\puppeteer-core\src\node\ChromeLauncher.ts:
+131:16)
+    at ChromeLauncher.launch 
+(C:\Users\nithi\OneDrive\Documents\Side Project\Ente Bot\bac
+kend\node_modules\puppeteer-core\src\node\BrowserLauncher.ts
+:109:35)
+    at ChromeLauncher.launch 
+(C:\Users\nithi\OneDrive\Documents\Side Project\Ente Bot\bac
+kend\node_modules\puppeteer-core\src\node\ChromeLauncher.ts:
+58:18)
+    at PuppeteerNode.launch 
+(C:\Users\nithi\OneDrive\Documents\Side Project\Ente Bot\bac
+kend\node_modules\puppeteer-core\src\node\PuppeteerNode.ts:1
+64:27)
+    at Client.initialize 
 (C:\Users\nithi\OneDrive\Documents\Side Project\Ente Bot\bac
 kend\node_modules\whatsapp-web.js\src\Client.js:462:39)
     at processTicksAndRejections 
