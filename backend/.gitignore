@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+
+# Environment Variables (NEVER commit these - contains secrets!)
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+build/
+
+# WhatsApp session data (contains your linked device credentials)
+.wwebjs_auth/
+.wwebjs_cache/
+
+# Puppeteer/Chrome cache
+chrome/
+
+# Logs
+*.log
+backend_logs.txt
+backend_logs_utf8.txt
+npm-debug.log*
+
+# TypeScript cache
+*.tsbuildinfo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
