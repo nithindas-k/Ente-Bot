@@ -1,5 +1,7 @@
 import { IWhatsappService } from './interfaces/IWhatsappService';
 import client from '../config/whatsapp.config';
+import fs from 'fs';
+import path from 'path';
 
 export class WhatsappService implements IWhatsappService {
     private antiSpamService: any; // Type once injected
@@ -9,6 +11,7 @@ export class WhatsappService implements IWhatsappService {
     private messageBuffers: Map<string, string[]> = new Map();
     private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
     private latestQr: string | null = null;
+    private isReady: boolean = false;
 
     constructor(antiSpamService: any, aiService: any, contactRepo: any, personalityRepo: any) {
         this.antiSpamService = antiSpamService;
@@ -21,19 +24,47 @@ export class WhatsappService implements IWhatsappService {
         return this.latestQr;
     }
 
+    getStatus(): string {
+        return this.isReady ? 'connected' : 'disconnected';
+    }
+
     initialize(): void {
+        // PERMANENT FIX: Remove stale lock files that cause "Browser is already running" error
+        const lockFile = path.join(process.cwd(), '.wwebjs_auth', 'session-ente-bot', 'SingletonLock');
+        if (fs.existsSync(lockFile)) {
+            try {
+                fs.unlinkSync(lockFile);
+                console.log('[WhatsApp] Freed stale session lock.');
+            } catch (err) {
+                // If we can't delete it, it might still be in use by a ghost process
+                console.warn('[WhatsApp] Stale lock detected but busy. Attempting to proceed...');
+            }
+        }
+
         client.on('qr', (qr: any) => {
             console.log('[WhatsApp] QR RECEIVED');
             this.latestQr = qr;
         });
 
-        client.on('ready', () => {
+        client.on('ready', async () => {
             console.log('[WhatsApp] Client is ready!');
+            this.isReady = true;
+            this.latestQr = null; 
+            
+           
+            console.log('[WhatsApp] Syncing existing contacts...');
+            await this.syncContacts();
+        });
+
+        client.on('disconnected', () => {
+            console.log('[WhatsApp] Client disconnected.');
+            this.isReady = false;
         });
 
         client.on('message', async (msg: any) => {
             const from = msg.from;
             const body = msg.body;
+            console.log(`[WhatsApp] Message received from ${from}: ${body.substring(0, 20)}...`);
 
             // 7. No media spam (text only)
             if (msg.type !== 'chat') {
@@ -45,13 +76,30 @@ export class WhatsappService implements IWhatsappService {
                 return;
             }
 
-            // Sanitize number (remove @c.us)
+           
             const phoneNumber = from.split('@')[0];
 
-            const isSafe = await this.antiSpamService.checkAllRules(phoneNumber);
-            if (!isSafe) return;
+            
+            let contact = await this.contactRepo.findByPhone(null, phoneNumber);
+            if (!contact) {
+                const contactName = msg._data?.notifyName || "Unknown";
+                console.log(`[WhatsApp] New contact discovered: ${contactName} (${phoneNumber})`);
+                contact = await this.contactRepo.create({
+                    name: contactName,
+                    phoneNumber: phoneNumber,
+                    botEnabled: false,
+                    dailyMessageCount: 0
+                });
+            }
 
-            // 3. One reply at a time (Debounce)
+            const isSafe = await this.antiSpamService.checkAllRules(phoneNumber);
+            if (!isSafe) {
+               
+                await this.contactRepo.update(contact._id.toString(), { lastMessageTime: new Date() });
+                return;
+            }
+
+         
             let buffer = this.messageBuffers.get(from) || [];
             buffer.push(body);
             this.messageBuffers.set(from, buffer);
@@ -98,6 +146,32 @@ export class WhatsappService implements IWhatsappService {
         client.initialize();
     }
 
+
+    async syncContacts(): Promise<void> {
+        try {
+            const chats = await client.getChats();
+            console.log(`[WhatsApp] Found ${chats.length} existing chats. Syncing to DB...`);
+            
+            for (const chat of chats) {
+                if (chat.isGroup) continue;
+                
+                const phoneNumber = chat.id.user;
+                const existing = await this.contactRepo.findByPhone(null, phoneNumber);
+                
+                if (!existing) {
+                    await this.contactRepo.create({
+                        name: chat.name || "Unknown",
+                        phoneNumber: phoneNumber,
+                        botEnabled: false,
+                        dailyMessageCount: 0
+                    });
+                }
+            }
+            console.log('[WhatsApp] Contact sync completed.');
+        } catch (err) {
+            console.error('[WhatsApp] Contact sync failed:', err);
+        }
+    }
 
     async sendMessage(to: string, content: string): Promise<void> {
         await client.sendMessage(to, content);

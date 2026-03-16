@@ -14,7 +14,7 @@ function App() {
         <Route path="/setup" element={<SetupPage />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/contacts" element={<ContactsPage />} />
-        <Route path="/personality" element={<PersonalityPage />} />
+        <Route path="/personality/:contactId" element={<PersonalityPage />} />
         <Route path="/chat" element={<LiveChatPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

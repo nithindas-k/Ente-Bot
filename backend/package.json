@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node dist/app.js",
-    "dev": "nodemon",
+    "dev": "taskkill /F /IM chrome.exe /T || cd . & nodemon",
     "build": "tsc"
   },
   "keywords": [],
@@ -33,6 +33,6 @@
     "mongoose": "^9.3.0",
     "puppeteer": "^24.39.1",
     "socket.io": "^4.8.3",
-    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js"
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js#webpack-ex-fix"
   }
 }

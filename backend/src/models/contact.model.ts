@@ -14,7 +14,7 @@ export interface IContact extends Document {
 }
 
 const ContactSchema = new Schema<IContact>({
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
     name: { type: String, required: true },
     phoneNumber: { type: String, required: true },
     relationship: { type: String },

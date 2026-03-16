@@ -1,0 +1,5 @@
+﻿    at Client.initialize 
+(C:\Users\nithi\OneDrive\Documents\Side Project\Ente Bot\bac
+kend\node_modules\whatsapp-web.js\src\Client.js:462:39)
+    at processTicksAndRejections 
+(node:internal/process/task_queues:105:5)

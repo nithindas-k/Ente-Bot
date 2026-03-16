@@ -17,9 +17,9 @@ import { WhatsappService } from './services/whatsapp.service';
 // Import Routes
 import authRoutes from './routes/auth.routes';
 import contactRoutes from './routes/contact.routes';
-import personalityRoutes from './routes/personality.routes';
+import { createPersonalityRouter } from './routes/personality.routes';
 import messageRoutes from './routes/message.routes';
-import dashboardRoutes from './routes/dashboard.routes';
+import { createDashboardRouter } from './routes/dashboard.routes';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,9 +31,9 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/contacts', contactRoutes);
-app.use('/api/personalities', personalityRoutes);
+// app.use('/api/personalities', personalityRoutes); // Moved inside block
 app.use('/api/messages', messageRoutes);
-app.use('/api/dashboard', dashboardRoutes);
+// app.use('/api/dashboard', dashboardRoutes); // Moved inside connectDB block
 
 app.get('/health', (req: any, res: any) => {
     res.json({ status: 'ok', message: 'Ente Bot Backend Running' });
@@ -54,6 +54,15 @@ connectDB().then(() => {
     app.get('/api/auth/qr', (req, res) => {
         res.json({ qr: whatsappService.getLatestQr() });
     });
+
+    // Serve connection status
+    app.get('/api/auth/status', (req, res) => {
+        res.json({ status: whatsappService.getStatus() });
+    });
+
+    // Initialize Dashboard Routes with dependencies
+    app.use('/api/dashboard', createDashboardRouter(whatsappService));
+    app.use('/api/personalities', createPersonalityRouter(aiService));
 
     const server = app.listen(PORT, () => {
         console.log(`[Server] running on port ${PORT}`);

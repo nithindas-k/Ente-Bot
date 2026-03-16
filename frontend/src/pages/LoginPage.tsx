@@ -4,8 +4,7 @@ export default function LoginPage() {
     const navigate = useNavigate();
 
     const handleMockLogin = () => {
-        // Since there are no environment keys added yet, bypassing directly to Setup
-        navigate('/setup');
+        navigate('/dashboard');
     };
 
     return (
