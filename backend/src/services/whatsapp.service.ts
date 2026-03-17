@@ -235,4 +235,15 @@ export class WhatsappService implements IWhatsappService {
             console.error('[WhatsApp] Error during QR refresh:', err);
         }
     }
+
+    async getPairingCode(phoneNumber: string): Promise<string> {
+        try {
+            console.log(`[WhatsApp] Requesting pairing code for ${phoneNumber}...`);
+            const code = await client.requestPairingCode(phoneNumber);
+            return code;
+        } catch (err) {
+            console.error('[WhatsApp] Error requesting pairing code:', err);
+            throw err;
+        }
+    }
 }

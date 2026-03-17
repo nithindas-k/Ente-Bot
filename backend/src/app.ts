@@ -71,7 +71,6 @@ connectDB().then(async () => {
     // Routes
     app.use('/api/auth', createAuthRouter(authController));
     
-    // DP Fetcher Route (Must be before general contact routes)
     app.get('/api/contacts/dp/:phone', async (req, res) => {
         const dpUrl = await whatsappService.getProfilePicUrl(req.params.phone);
         res.json({ url: dpUrl });
@@ -80,12 +79,10 @@ connectDB().then(async () => {
     app.use('/api/contacts', contactRoutes);
     app.use('/api/messages', messageRoutes);
     
-    // Serve QR Live string for Frontend Polling
     app.get('/api/auth/qr', (req, res) => {
         res.json({ qr: whatsappService.getLatestQr() });
     });
 
-    // Serve connection status
     app.get('/api/auth/status', (req, res) => {
         res.json({ 
             status: whatsappService.getStatus(),
@@ -93,16 +90,28 @@ connectDB().then(async () => {
         });
     });
 
-    // WhatsApp Logout
     app.post('/api/auth/whatsapp/logout', async (req, res) => {
         await whatsappService.logout();
         res.json({ success: true, message: "Logged out from WhatsApp." });
     });
 
-    // WhatsApp Refresh QR
     app.post('/api/auth/whatsapp/refresh', async (req, res) => {
         await whatsappService.refreshQr();
         res.json({ success: true, message: "Refreshing QR code." });
+    });
+    
+
+    app.post('/api/auth/whatsapp/pairing-code', async (req, res): Promise<any> => {
+        const { phone } = req.body;
+        if (!phone) {
+            return res.status(400).json({ error: "Phone number is required." });
+        }
+        try {
+            const code = await whatsappService.getPairingCode(phone);
+            res.json({ success: true, code });
+        } catch (err) {
+            res.status(500).json({ error: "Failed to generate pairing code. Try refreshing QR first." });
+        }
     });
 
     
