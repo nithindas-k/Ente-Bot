@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage';
 import ContactsPage from './pages/ContactsPage';
 import PersonalityPage from './pages/PersonalityPage';
 import ApiKeySetup from './pages/ApiKeySetup';
+import HowToUsePage from './pages/HowToUsePage';
 import { Layout } from './components/Layout';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/personality/:contactId" element={<PersonalityPage />} />
           <Route path="/api-setup" element={<ApiKeySetup />} />
+          <Route path="/how-to-use" element={<HowToUsePage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Layout>

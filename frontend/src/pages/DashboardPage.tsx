@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import QRScanner from "@/components/QRScanner";
-import { Users, MessageSquare, Play, AlertCircle, LayoutDashboard, Key } from "lucide-react";
+import { Users, MessageSquare, AlertCircle, LayoutDashboard, Key, BookOpen } from "lucide-react";
 import axios from "axios";
 
 export default function DashboardPage() {
@@ -50,9 +50,12 @@ export default function DashboardPage() {
                         <Key className="w-3.5 h-3.5 mr-1.5" />
                         API Setup
                     </Button>
-                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-10 text-xs font-bold rounded-xl flex items-center space-x-1.5 border-0">
-                        <Play className="w-4 h-4 mr-0.5 fill-white" />
-                        <span>Start Bot</span>
+                    <Button 
+                        onClick={() => navigate('/how-to-use')}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-10 text-xs font-bold rounded-xl flex items-center space-x-1.5 border-0 group"
+                    >
+                        <BookOpen className="w-4 h-4 mr-0.5" />
+                        <span>How to Enable</span>
                     </Button>
                 </div>
             </div>
