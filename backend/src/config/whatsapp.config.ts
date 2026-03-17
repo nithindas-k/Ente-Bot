@@ -1,11 +1,32 @@
 // @ts-ignore
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import path from 'path';
+import fs from 'fs';
 
+function getProductionChromePath() {
+    if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
+    
+    // Check if we downloaded it into .cache during Render build
+    const cacheDir = path.resolve(process.cwd(), '.cache', 'puppeteer', 'chrome');
+    if (fs.existsSync(cacheDir)) {
+        const folders = fs.readdirSync(cacheDir);
+        for (const folder of folders) {
+            if (folder.startsWith('linux-')) {
+                const exePath = path.join(cacheDir, folder, 'chrome-linux64', 'chrome');
+                if (fs.existsSync(exePath)) {
+                    return exePath;
+                }
+            }
+        }
+    }
+    return undefined; // Let puppeteer try to find its default
+}
+
+const isProduction = process.env.NODE_ENV === 'production';
 const localChromePath = path.resolve(process.cwd(), 'chrome', 'win64-146.0.7680.80', 'chrome-win64', 'chrome.exe');
-const finalChromePath = process.env.CHROME_PATH || localChromePath;
+const finalChromePath = isProduction ? getProductionChromePath() : localChromePath;
 
-console.log(`[WhatsApp] Using Chrome at: ${finalChromePath}`);
+console.log(`[WhatsApp] Using Chrome at: ${finalChromePath || 'Puppeteer Default'}`);
 
 const client = new Client({
     authStrategy: new LocalAuth({
@@ -18,7 +39,7 @@ const client = new Client({
     },
     puppeteer: {
         headless: true,
-        executablePath: finalChromePath,
+        ...(finalChromePath ? { executablePath: finalChromePath } : {}),
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',

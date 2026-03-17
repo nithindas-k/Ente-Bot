@@ -7,4 +7,5 @@ npm run build
 
 # Download Chrome for Puppeteer inside the container
 echo "Installing Puppeteer dependencies (Chrome for Linux)..."
+export PUPPETEER_CACHE_DIR="$PWD/.cache/puppeteer"
 npx puppeteer browsers install chrome
