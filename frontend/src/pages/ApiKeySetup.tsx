@@ -17,8 +17,8 @@ import {
 
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api.config";
 
-const API_BASE = "http://localhost:5000/api/auth";
 
 // ── BROWSER SHELL ──────────────────────────────────────────────
 function BrowserFrame({ children, url }: { children: React.ReactNode; url: string }) {
@@ -229,7 +229,7 @@ export default function ApiKeySetup() {
 
   const fetchUserStatus = async () => {
     try {
-      const { data } = await axios.get(`${API_BASE}/me`);
+      const { data } = await axios.get(`${API_BASE_URL}/api/auth/me`);
       if (data.user?.groqApiKey) {
         setHasExistingKey(true);
       } else {
@@ -245,7 +245,7 @@ export default function ApiKeySetup() {
   const handleSave = async () => {
     try {
       setSaved(true);
-      await axios.put(`${API_BASE}/groq-key`, { apiKey });
+      await axios.put(`${API_BASE_URL}/api/auth/groq-key`, { apiKey });
       localStorage.setItem("groq_api_key", apiKey);
       setTimeout(() => navigate('/dashboard'), 2000);
     } catch (err) {
@@ -256,7 +256,7 @@ export default function ApiKeySetup() {
 
   const handleDelete = async () => {
       try {
-          await axios.delete(`${API_BASE}/groq-key`);
+          await axios.delete(`${API_BASE_URL}/api/auth/groq-key`);
           localStorage.removeItem("groq_api_key");
           setHasExistingKey(false);
           setCur(0);

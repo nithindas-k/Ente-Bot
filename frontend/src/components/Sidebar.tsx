@@ -22,6 +22,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api.config";
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -42,7 +43,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   useEffect(() => {
     const fetchAccount = async () => {
         try {
-            const res = await axios.get("http://localhost:5000/api/auth/status");
+            const res = await axios.get(`${API_BASE_URL}/api/auth/status`);
             if (res.data?.status === 'connected' && res.data?.account) {
                 setIsConnected(true);
                 setAccount(res.data.account);
@@ -170,7 +171,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 <AlertDialogAction
                   onClick={async () => {
                     try {
-                      await axios.post("http://localhost:5000/api/auth/logout");
+                      await axios.post(`${API_BASE_URL}/api/auth/logout`);
                     } catch (e) {
                       console.error("Logout API failed", e);
                     }

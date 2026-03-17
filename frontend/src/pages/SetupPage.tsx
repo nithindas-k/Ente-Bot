@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import QRScanner from "@/components/QRScanner";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api.config";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -217,11 +218,11 @@ export default function SetupPage() {
     useEffect(() => {
         const checkStatus = async () => {
             try {
-                const res = await axios.get("http://localhost:5000/api/auth/status");
+                const res = await axios.get(`${API_BASE_URL}/api/auth/status`);
                 setIsConnected(res.data?.status === 'connected');
 
                 // Check API Key status
-                const userRes = await axios.get("http://localhost:5000/api/auth/me");
+                const userRes = await axios.get(`${API_BASE_URL}/api/auth/me`);
                 setHasApiKey(!!userRes.data?.user?.groqApiKey);
             } catch (err) {
                 console.error("Failed to fetch WhatsApp or User status", err);
@@ -236,7 +237,7 @@ export default function SetupPage() {
     const handleLogout = async () => {
         setIsLoggingOut(true);
         try {
-            await axios.post("http://localhost:5000/api/auth/whatsapp/logout");
+            await axios.post(`${API_BASE_URL}/api/auth/whatsapp/logout`);
             setIsConnected(false);
             setCur(0);
         } catch (err) {

@@ -238,8 +238,30 @@ export class WhatsappService implements IWhatsappService {
 
     async getPairingCode(phoneNumber: string): Promise<string> {
         try {
-            console.log(`[WhatsApp] Requesting pairing code for ${phoneNumber}...`);
-            const code = await client.requestPairingCode(phoneNumber);
+            // 1. Format number: remove all non-digits
+            let formattedNumber = phoneNumber.replace(/\D/g, '');
+            
+            // 2. Add India country code if it looks like a local 10-digit number
+            if (formattedNumber.length === 10) {
+                formattedNumber = '91' + formattedNumber;
+                console.log(`[WhatsApp] Auto-added 91 prefix: ${formattedNumber}`);
+            }
+
+            console.log(`[WhatsApp] Requesting pairing code for ${formattedNumber}...`);
+            
+            // 3. FIX: Manually expose the callback function that the library expects in the browser
+            // This fixes the "window.onCodeReceivedEvent is not a function" error
+            // @ts-ignore - pupPage is internal but accessible at runtime
+            if (client.pupPage) {
+                // @ts-ignore
+                await client.pupPage.exposeFunction('onCodeReceivedEvent', (code: string) => {
+                    return code;
+                }).catch(() => {
+                    // Ignore error if it's already exposed
+                });
+            }
+
+            const code = await client.requestPairingCode(formattedNumber);
             return code;
         } catch (err) {
             console.error('[WhatsApp] Error requesting pairing code:', err);

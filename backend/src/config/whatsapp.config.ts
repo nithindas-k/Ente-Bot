@@ -2,6 +2,11 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import path from 'path';
 
+const localChromePath = path.resolve(process.cwd(), 'chrome', 'win64-146.0.7680.80', 'chrome-win64', 'chrome.exe');
+const finalChromePath = process.env.CHROME_PATH || localChromePath;
+
+console.log(`[WhatsApp] Using Chrome at: ${finalChromePath}`);
+
 const client = new Client({
     authStrategy: new LocalAuth({
         clientId: "ente-bot",
@@ -13,7 +18,7 @@ const client = new Client({
     },
     puppeteer: {
         headless: true,
-        executablePath: 'C:\\Users\\nithi\\OneDrive\\Documents\\Side Project\\Ente Bot\\backend\\chrome\\win64-146.0.7680.80\\chrome-win64\\chrome.exe',
+        executablePath: finalChromePath,
         args: [
             '--no-sandbox', 
             '--disable-setuid-sandbox',

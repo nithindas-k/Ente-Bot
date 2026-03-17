@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { UserPlus, Settings, ShieldCheck, ShieldAlert, Search, Users, Filter, Bot } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api.config";
 
 interface Contact {
     _id: string;
@@ -17,7 +18,7 @@ function ContactCard({ contact, onToggle, onClickSettings }: { contact: Contact,
     const [dp, setDp] = useState<string | null>(null);
 
     useEffect(() => {
-        axios.get(`http://localhost:5000/api/contacts/dp/${contact.phoneNumber}`)
+        axios.get(`${API_BASE_URL}/api/contacts/dp/${contact.phoneNumber}`)
             .then(res => setDp(res.data.url))
             .catch(() => {});
     }, [contact.phoneNumber]);
@@ -83,7 +84,7 @@ export default function ContactsPage() {
 
     const fetchContacts = async () => {
         try {
-            const response = await axios.get("http://localhost:5000/api/contacts");
+            const response = await axios.get(`${API_BASE_URL}/api/contacts`);
             setContacts(response.data.contacts);
         } catch (error) {
             console.error("Error fetching contacts:", error);
@@ -98,7 +99,7 @@ export default function ContactsPage() {
 
     const toggleWhitelist = async (id: string) => {
         try {
-            await axios.post(`http://localhost:5000/api/contacts/${id}/toggle`);
+            await axios.post(`${API_BASE_URL}/api/contacts/${id}/toggle`);
             fetchContacts(); // Refresh
         } catch (error) {
             console.error("Error toggling status:", error);

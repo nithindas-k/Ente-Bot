@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import QRScanner from "@/components/QRScanner";
 import { Users, MessageSquare, AlertCircle, LayoutDashboard, Key, BookOpen } from "lucide-react";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api.config";
 
 export default function DashboardPage() {
     const navigate = useNavigate();
@@ -17,7 +18,7 @@ export default function DashboardPage() {
     useEffect(() => {
         const fetchStats = async () => {
             try {
-                const response = await axios.get("http://localhost:5000/api/dashboard/stats");
+                const response = await axios.get(`${API_BASE_URL}/api/dashboard/stats`);
                 setStats(response.data);
             } catch (error) {
                 console.error("Error fetching stats:", error);

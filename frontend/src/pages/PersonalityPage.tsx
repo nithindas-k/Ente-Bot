@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Save, BrainCircuit, ArrowLeft, Loader2, CheckCircle } from "lucide-react";
 import axios from "axios";
+import { API_BASE_URL } from "@/config/api.config";
 import { FileUpload } from "@/components/FileUpload";
 
 export default function PersonalityPage() {
@@ -18,7 +19,7 @@ export default function PersonalityPage() {
     useEffect(() => {
         const fetchPersonality = async () => {
             try {
-                const response = await axios.get(`http://localhost:5000/api/personalities/${contactId}`);
+                const response = await axios.get(`${API_BASE_URL}/api/personalities/${contactId}`);
                 if (response.data.personality) {
                     setPrompt(response.data.personality.systemPrompt);
                     setChatSample(response.data.personality.rawChatSample || "");
@@ -34,7 +35,7 @@ export default function PersonalityPage() {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await axios.put(`http://localhost:5000/api/personalities/${contactId}`, { systemPrompt: prompt });
+            await axios.put(`${API_BASE_URL}/api/personalities/${contactId}`, { systemPrompt: prompt });
             alert("Instructions saved successfully!");
         } catch (error) {
             console.error("Error saving prompt:", error);
@@ -47,7 +48,7 @@ export default function PersonalityPage() {
         if (!chatSample.trim()) return alert("Please upload or paste some chat samples first.");
         setIsTraining(true);
         try {
-            const response = await axios.post(`http://localhost:5000/api/personalities/${contactId}/train`, { rawChat: chatSample });
+            const response = await axios.post(`${API_BASE_URL}/api/personalities/${contactId}/train`, { rawChat: chatSample });
             setPrompt(response.data.personality.systemPrompt);
             setLastTrained(response.data.personality.trainedAt);
             alert("AI has analyzed the style and updated the instructions!");
