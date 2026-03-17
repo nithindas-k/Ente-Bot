@@ -1,17 +1,16 @@
 import { Router } from 'express';
+import { AuthController } from '../controllers/auth.controller';
 
-const router = Router();
+export const createAuthRouter = (authController: AuthController) => {
+    const router = Router();
 
-router.post('/google', (req, res) => {
-    res.json({ message: 'Google Auth Login Endpoint' });
-});
+    router.post('/google', (req, res) => authController.googleLogin(req, res));
+    router.post('/logout', (req, res) => authController.logout(req, res));
+    router.get('/me', (req, res) => authController.getMe(req, res));
+    
+    // Groq API Key Management
+    router.put('/groq-key', (req, res) => authController.saveGroqKey(req, res));
+    router.delete('/groq-key', (req, res) => authController.deleteGroqKey(req, res));
 
-router.post('/logout', (req, res) => {
-    res.json({ message: 'Logout' });
-});
-
-router.get('/me', (req, res) => {
-    res.json({ user: null });
-});
-
-export default router;
+    return router;
+};

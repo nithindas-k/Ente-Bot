@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Settings, ShieldCheck, ShieldAlert, Search } from "lucide-react";
+import { UserPlus, Settings, ShieldCheck, ShieldAlert, Search, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 
@@ -52,15 +52,20 @@ export default function ContactsPage() {
     });
 
     return (
-        <div className="p-8 space-y-6 bg-neutral-950 min-h-screen text-white font-sans">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Contacts</h1>
-                    <p className="text-neutral-400 text-sm">Manage who your AI bot talks to. Only whitelisted contacts get AI replies.</p>
+        <div className="space-y-6 animate-in fade-in duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                        <Users className="w-6 h-6 text-emerald-500" />
+                        Contacts
+                    </h1>
+                    <p className="text-neutral-400 text-xs max-w-sm leading-relaxed">
+                        Control where your AI assistant responds. Only whitelisted numbers will get automatic replies.
+                    </p>
                 </div>
-                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-2">
-                    <UserPlus className="w-4 h-4" />
-                    <span>Whitelist Contact</span>
+                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 h-auto text-xs font-bold rounded-xl flex items-center space-x-1.5 border-0">
+                    <UserPlus className="w-4 h-4 mr-0.5" />
+                    <span>Add Contact</span>
                 </Button>
             </div>
 

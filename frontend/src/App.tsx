@@ -4,20 +4,23 @@ import SetupPage from './pages/SetupPage';
 import DashboardPage from './pages/DashboardPage';
 import ContactsPage from './pages/ContactsPage';
 import PersonalityPage from './pages/PersonalityPage';
-import LiveChatPage from './pages/LiveChatPage';
+import ApiKeySetup from './pages/ApiKeySetup';
+import { Layout } from './components/Layout';
 
 function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/setup" element={<SetupPage />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/contacts" element={<ContactsPage />} />
-        <Route path="/personality/:contactId" element={<PersonalityPage />} />
-        <Route path="/chat" element={<LiveChatPage />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
-      </Routes>
+      <Layout>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/setup" element={<SetupPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/personality/:contactId" element={<PersonalityPage />} />
+          <Route path="/api-setup" element={<ApiKeySetup />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
+        </Routes>
+      </Layout>
     </BrowserRouter>
   );
 }

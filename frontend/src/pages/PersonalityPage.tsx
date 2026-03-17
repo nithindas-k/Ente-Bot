@@ -59,20 +59,30 @@ export default function PersonalityPage() {
     };
 
     return (
-        <div className="p-8 space-y-6 bg-neutral-950 min-h-screen text-white font-sans">
-            <div className="flex items-center space-x-4">
-                <Button variant="ghost" size="sm" onClick={() => navigate("/contacts")} className="text-neutral-400">
-                    <ArrowLeft className="w-4 h-4" />
+        <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex items-center space-x-6">
+                <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={() => navigate("/contacts")} 
+                    className="w-12 h-12 rounded-2xl border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 text-white transition-all"
+                >
+                    <ArrowLeft className="w-5 h-5 font-bold" />
                 </Button>
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Personality Editor</h1>
-                    <p className="text-neutral-400 text-sm">Fine-tune how your bot speaks to this specific contact.</p>
+                    <h1 className="text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                        <BrainCircuit className="w-8 h-8 text-emerald-500" />
+                        Personality Editor
+                    </h1>
+                    <p className="text-neutral-400 text-sm max-w-md leading-relaxed">
+                        Fine-tune exactly how your AI assistant speaks to this specific contact.
+                    </p>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Manual Editor */}
-                <Card className="bg-neutral-900 border-neutral-800 text-white shadow-xl shadow-black/50">
+                <Card className="bg-neutral-900 border-neutral-800 text-white">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center space-x-2">
                             <span>System Instructions</span>
@@ -89,7 +99,7 @@ export default function PersonalityPage() {
                         <Button 
                             onClick={handleSave}
                             disabled={isSaving}
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center space-x-2 h-11 shadow-lg shadow-emerald-900/20"
+                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center space-x-2 h-11"
                         >
                             {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                             <span>{isSaving ? "Saving..." : "Save Instructions"}</span>
@@ -98,7 +108,7 @@ export default function PersonalityPage() {
                 </Card>
 
                 {/* AI Trainer */}
-                <Card className="bg-neutral-900 border-emerald-900/30 bg-gradient-to-br from-neutral-900 to-emerald-950/20 text-white shadow-xl shadow-emerald-900/10">
+                <Card className="bg-neutral-900 border-emerald-900/30 bg-gradient-to-br from-neutral-900 to-emerald-950/20 text-white">
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center space-x-2 text-emerald-400">
                             <BrainCircuit className="w-5 h-5" />

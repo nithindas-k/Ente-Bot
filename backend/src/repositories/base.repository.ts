@@ -16,6 +16,10 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
         return await this.model.find(filter);
     }
 
+    async findOne(filter: object = {}): Promise<T | null> {
+        return await this.model.findOne(filter);
+    }
+
     async create(data: any): Promise<T> {
         return await this.model.create(data);
     }

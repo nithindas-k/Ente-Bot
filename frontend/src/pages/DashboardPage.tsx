@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import QRScanner from "@/components/QRScanner";
-import { Users, MessageSquare, Play, AlertCircle } from "lucide-react";
+import { Users, MessageSquare, Play, AlertCircle, LayoutDashboard, Key } from "lucide-react";
 import axios from "axios";
 
 export default function DashboardPage() {
+    const navigate = useNavigate();
     const [stats, setStats] = useState({
         status: "Disconnected",
         repliesToday: 0,
@@ -28,46 +30,61 @@ export default function DashboardPage() {
         return () => clearInterval(interval);
     }, []);
     return (
-        <div className="p-8 space-y-6 bg-neutral-950 min-h-screen text-white font-sans">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-                    <p className="text-neutral-400 text-sm">Overview of your AI Bot activity.</p>
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 overflow-visible">
+                <div className="space-y-1">
+                    <h1 className="text-2xl font-extrabold tracking-tight text-white flex items-center gap-2">
+                        <LayoutDashboard className="w-6 h-6 text-emerald-500" />
+                        Dashboard
+                    </h1>
+                    <p className="text-neutral-400 text-xs max-w-sm leading-relaxed">
+                        Control your AI Companion's behavior and monitor live activity.
+                    </p>
                 </div>
-                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-2">
-                    <Play className="w-4 h-4" />
-                    <span>Start Bot</span>
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button 
+                        variant="outline" 
+                        onClick={() => navigate('/api-setup')}
+                        className="h-10 px-4 rounded-xl border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 text-white font-bold text-xs"
+                    >
+                        <Key className="w-3.5 h-3.5 mr-1.5" />
+                        API Setup
+                    </Button>
+                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 h-10 text-xs font-bold rounded-xl flex items-center space-x-1.5 border-0">
+                        <Play className="w-4 h-4 mr-0.5 fill-white" />
+                        <span>Start Bot</span>
+                    </Button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Card className="bg-neutral-900 border-neutral-800 text-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-neutral-400">Status</CardTitle>
-                        <AlertCircle className="w-4 h-4 text-red-500" />
+                    <CardHeader className="flex flex-row items-center justify-between pb-1.5">
+                        <CardTitle className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Status</CardTitle>
+                        <AlertCircle className="w-3.5 h-3.5 text-red-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-2xl font-bold ${stats.status === "Connected" ? "text-emerald-500" : "text-red-500"}`}>
+                        <div className={`text-xl font-bold ${stats.status === "Connected" ? "text-emerald-500" : "text-red-500"}`}>
                             {stats.status}
                         </div>
                     </CardContent>
                 </Card>
                 <Card className="bg-neutral-900 border-neutral-800 text-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-neutral-400">Replies Today</CardTitle>
-                        <MessageSquare className="w-4 h-4 text-emerald-500" />
+                    <CardHeader className="flex flex-row items-center justify-between pb-1.5">
+                        <CardTitle className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Replies Today</CardTitle>
+                        <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.repliesToday} / 150</div>
+                        <div className="text-xl font-bold">{stats.repliesToday} / 150</div>
                     </CardContent>
                 </Card>
                 <Card className="bg-neutral-900 border-neutral-800 text-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-neutral-400">Active Contacts</CardTitle>
-                        <Users className="w-4 h-4 text-blue-500" />
+                    <CardHeader className="flex flex-row items-center justify-between pb-1.5">
+                        <CardTitle className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">Active Contacts</CardTitle>
+                        <Users className="w-3.5 h-3.5 text-blue-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{stats.activeContacts}</div>
+                        <div className="text-xl font-bold">{stats.activeContacts}</div>
                     </CardContent>
                 </Card>
             </div>
