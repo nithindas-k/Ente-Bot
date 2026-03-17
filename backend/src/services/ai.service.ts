@@ -18,17 +18,31 @@ export class AIService implements IAIService {
 
     public updateApiKey(key: string): void {
         this.groq = new Groq({
-            apiKey: key || process.env.GROQ_API_KEY || '',
+            apiKey: key,
         });
         console.log('[AI Service] API Key updated and client re-initialized. 🚀');
     }
 
-   
     private loadManglishDictionary(): void {
         try {
-            const dictPath = path.join(__dirname, '../data/manglish_dictionary.txt');
-            const fullContent = fs.readFileSync(dictPath, 'utf-8');
+            // Check both src/data (dev) and dist/data (prod)
+            const possiblePaths = [
+                path.join(process.cwd(), 'src/data/manglish_dictionary.txt'),
+                path.join(process.cwd(), 'dist/data/manglish_dictionary.txt'),
+                path.join(__dirname, '../data/manglish_dictionary.txt')
+            ];
             
+            let dictPath = '';
+            for (const p of possiblePaths) {
+                if (fs.existsSync(p)) {
+                    dictPath = p;
+                    break;
+                }
+            }
+
+            if (!dictPath) throw new Error('Not found');
+
+            const fullContent = fs.readFileSync(dictPath, 'utf-8');
             const sections = fullContent.split(/===\s+(.*?)\s+===/g);
             for (let i = 1; i < sections.length; i += 2) {
                 const title = sections[i]?.trim();
@@ -81,50 +95,35 @@ export class AIService implements IAIService {
         return {
             length: words.length,
             isQuestion: trimmed.includes('?'),
+            isGreeting: /^(hi|hlo|hloo|hlw|hai|haii|hello|hey|hei|sup|gm|gn)\b/i.test(trimmed),
             isEmoji: /^[\p{Emoji}\p{Extended_Pictographic}\s]+$/u.test(trimmed),
             isShort: words.length <= 3,
-            isLong: words.length > 10,
-            isGreeting: /^(hi|hlo|hloo|hlw|hai|haii|hello|hey|hei|sup|gm|gn)\b/i.test(trimmed),
-            isReaction: /^(eehh|oo|hmm|ayyo|potti|eede|kundhmm|ayenthye|noo|lol|haha|😂|😬|🥺|❤️|👍|😊|😅)\b/i.test(trimmed),
-            isFeelings: /\b(tired|bore|sad|happy|stress|tension|madi|vishamam|santhosham)\b/i.test(trimmed),
-            isFood: /\b(choru|chaya|kaapi|thinno|kazhichu|kudichoo|breakfast|lunch|dinner|biriyani|parotta|beef|saapdu)\b/i.test(trimmed),
-            isStudy: /\b(padikkunno|exam|assignment|bunk|internal|arrear|submission|class|college)\b/i.test(trimmed),
+            isFood: /\b(choru|chaya|kaapi|thinno|kazhichu|kudichoo)\b/i.test(trimmed),
+            isFeelings: /\b(tired|bore|sad|happy|madi|vishamam)\b/i.test(trimmed),
+            isStudy: /\b(padikkunno|exam|class|college)\b/i.test(trimmed),
+            isReaction: /^(eehh|oo|hmm|ayyo|potti|lol|haha)\b/i.test(trimmed),
         };
     }
 
-  
     private extractSmartSample(rawChat: string): string {
         const lines = rawChat.split('\n').filter(line => line.trim());
         if (lines.length <= 200) return lines.join('\n');
-
-        const sampleSize = 60;
-        const beginning = lines.slice(0, sampleSize);
-        const middle = lines.slice(Math.floor(lines.length / 2) - sampleSize / 2, Math.floor(lines.length / 2) + sampleSize / 2);
-        const end = lines.slice(-sampleSize);
-
-        return ["=== EARLY MESSAGES ===", ...beginning, "=== MIDDLE MESSAGES ===", ...middle, "=== RECENT MESSAGES ===", ...end].join('\n');
+        return lines.slice(-200).join('\n'); // Just take last 200 for simplicity and memory
     }
 
-  
     private cleanReply(reply: string, newMessage: string): string {
         reply = reply.trim();
-        if (reply.toLowerCase().startsWith(newMessage.toLowerCase())) {
-            reply = reply.substring(newMessage.length).trim();
-        }
-        if (reply.startsWith('"') && reply.endsWith('"')) {
-            reply = reply.slice(1, -1).trim();
-        }
-        const prefixes = ['correct:', 'assistant:', 'reply:', 'bot:', 'nithin:'];
-        for (const prefix of prefixes) {
-            if (reply.toLowerCase().startsWith(prefix)) {
-                reply = reply.substring(prefix.length).trim();
+        if (reply.startsWith('"') && reply.endsWith('"')) reply = reply.slice(1, -1).trim();
+        const prefixes = ['assistant:', 'reply:', 'bot:', 'nithin:'];
+        for (const p of prefixes) {
+            if (reply.toLowerCase().startsWith(p)) {
+                reply = reply.substring(p.length).trim();
                 break;
             }
         }
         return reply || "Mm da";
     }
 
-    
     public buildSystemPrompt(personalityPrompt: string, newMessage: string): string {
         const m = this.analyzeMessage(newMessage);
         const category = m.isGreeting ? 'GREETING' : m.isReaction ? 'REACTION' : m.isFood ? 'FOOD' : m.isFeelings ? 'FEELINGS' : m.isStudy ? 'STUDY' : 'GENERAL';
@@ -137,34 +136,19 @@ ${personalityPrompt}
 ${relevantSlang}
 
 === CORE RULES ===
-❌ NEVER invent personal context
-❌ NEVER repeat what they said
-✅ Mirror message length
 ✅ Sound like a real Malayali friend
+✅ Use Manglish naturally
 ${m.isEmoji ? '→ EMOJI ONLY reply.' : ''}
-${m.isShort && !m.isQuestion ? '→ MAX 4 words.' : ''}
+${m.isShort && !m.isQuestion ? '→ Keep it very short (max 4 words).' : ''}
 `;
     }
 
     public buildDefaultPrompt(newMessage: string): string {
-        const m = this.analyzeMessage(newMessage);
-        const category = m.isGreeting ? 'GREETING' : m.isReaction ? 'REACTION' : m.isFood ? 'FOOD' : m.isFeelings ? 'FEELINGS' : m.isStudy ? 'STUDY' : 'GENERAL';
-        const relevantSlang = this.getRelevantSlang(category);
-
-        return `
-You are a casual Malayali guy chatting. Keep it natural.
-${relevantSlang}
-
-Rules:
-- Mirror length
-- No fake context
-- Stay short
-`;
+        return this.buildSystemPrompt("You are a casual Malayali friend chatting in Manglish.", newMessage);
     }
 
-  
     async generateReply(systemPrompt: string, history: any[], newMessage: string): Promise<string> {
-        const recentHistory = history.slice(-15).map(msg => ({
+        const recentHistory = history.slice(-10).map(msg => ({
             role: (msg.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
             content: msg.content
         }));
@@ -177,60 +161,42 @@ Rules:
                     { role: "user", content: newMessage }
                 ],
                 model: model,
-                max_tokens: 80,
-                temperature: 0.5,
+                max_tokens: 100,
+                temperature: 0.7,
             });
         };
 
         try {
-            
             console.log(`[AI] Attempting ${this.PRIMARY_MODEL}...`);
             const response = await tryModel(this.PRIMARY_MODEL);
-            const raw = response.choices[0]?.message?.content || "";
-            return this.cleanReply(raw, newMessage);
+            return this.cleanReply(response.choices[0]?.message?.content || "", newMessage);
         } catch (error: any) {
-            if (error.status === 429 || error.message?.includes('429')) {
-                console.warn(`[AI] ${this.PRIMARY_MODEL} rate limited. Falling back to ${this.BACKUP_MODEL}...`);
-                try {
-                    const response = await tryModel(this.BACKUP_MODEL);
-                    const raw = response.choices[0]?.message?.content || "";
-                    return this.cleanReply(raw, newMessage);
-                } catch (backupError: any) {
-                    console.error(`[AI] Backup model also failed: ${backupError.message}`);
-                    return "Sorry da, small issue with my brain. Try after sometime 🥺";
-                }
+            console.warn(`[AI] Error with ${this.PRIMARY_MODEL}: ${error.message}`);
+            try {
+                const response = await tryModel(this.BACKUP_MODEL);
+                return this.cleanReply(response.choices[0]?.message?.content || "", newMessage);
+            } catch (backupError) {
+                return "Dei, network issue. Pinne parayam 🥺";
             }
-            console.error(`[AI Service] Error: ${error.message}`);
-            return "Error generating AI response";
         }
     }
 
     async analyzePersonality(rawChat: string): Promise<string> {
         const smartSample = this.extractSmartSample(rawChat);
-        const prompt = `Analyze this chat style and create a "You are..." prompt. Focus on slang, emoji, and length. ${smartSample}`;
+        const prompt = `Analyze this chat style and create a "You are..." prompt. Focus on slang, mood, and length.\n\n${smartSample}`;
 
-        const tryAnalyze = async (model: string) => {
-            return await (this.groq as any).chat.completions.create({
+        try {
+            const response = await this.groq.chat.completions.create({
                 messages: [
                     { role: "system", content: "Expert personality analyzer." },
                     { role: "user", content: prompt }
                 ],
-                model: model,
-                max_tokens: 300,
-                temperature: 0.3
+                model: this.PRIMARY_MODEL,
+                max_tokens: 400
             });
-        };
-
-        try {
-            const response = await tryAnalyze(this.PRIMARY_MODEL);
             return response.choices[0]?.message?.content || "";
-        } catch (error: any) {
-            if (error.status === 429 || error.message?.includes('429')) {
-                console.warn(`[AI] Analysis falling back to ${this.BACKUP_MODEL}...`);
-                const response = await tryAnalyze(this.BACKUP_MODEL);
-                return response.choices[0]?.message?.content || "";
-            }
-            return "Error: AI could not analyze the chat.";
+        } catch (error) {
+            return " Casual Malayali friend.";
         }
     }
 }

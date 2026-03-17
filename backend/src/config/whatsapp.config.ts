@@ -46,7 +46,7 @@ const client = new Client({
             '--disable-dev-shm-usage',
             '--disable-gpu',
             '--no-zygote',
-            '--no-first-run',
+            '--single-process',
             '--disable-extensions',
             '--disable-blink-features=AutomationControlled'
         ]
