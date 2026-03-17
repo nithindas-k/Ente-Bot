@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 export const createPersonalityRouter = (aiService: AIService) => {
     const router = Router();
 
-    // GET prompt for a contact
+    
     router.get('/:contactId', async (req, res) => {
         try {
             const personality = await Personality.findOne({ contactId: req.params.contactId });
@@ -16,7 +16,7 @@ export const createPersonalityRouter = (aiService: AIService) => {
         }
     });
 
-    // POST train personality
+
     router.post('/:contactId/train', async (req, res) => {
         try {
             const { rawChat } = req.body;
@@ -47,7 +47,6 @@ export const createPersonalityRouter = (aiService: AIService) => {
         }
     });
 
-    // PUT manual update
     router.put('/:contactId', async (req, res) => {
         try {
             const { systemPrompt } = req.body;

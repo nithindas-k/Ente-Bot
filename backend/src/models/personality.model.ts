@@ -6,7 +6,7 @@ export interface IPersonality extends Document {
     systemPrompt: string;
     phrases: string[];
     emojiStyle: string;
-    replyLength: number; // max tokens
+    replyLength: number; 
     rawChatSample?: string;
     trainedAt: Date;
 }

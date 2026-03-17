@@ -24,7 +24,7 @@ const ContactSchema = new Schema<IContact>({
     lastMessageTime: { type: Date }
 }, { timestamps: true });
 
-// COMPOUND INDEX for uniqueness per user
+
 ContactSchema.index({ userId: 1, phoneNumber: 1 }, { unique: true });
 
 export default mongoose.model<IContact>('Contact', ContactSchema);

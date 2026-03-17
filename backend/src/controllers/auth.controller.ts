@@ -23,7 +23,7 @@ export class AuthController implements IAuthController {
     }
 
     async getMe(req: Request, res: Response): Promise<void> {
-        const user = await this.userRepo.findOne({}); // Getting first user for now
+        const user = await this.userRepo.findOne({})
         res.json({ user, message: 'Authenticated user info' });
     }
 

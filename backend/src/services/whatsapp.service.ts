@@ -4,20 +4,22 @@ import fs from 'fs';
 import path from 'path';
 
 export class WhatsappService implements IWhatsappService {
-    private antiSpamService: any; // Type once injected
-    private aiService: any;       // Type once injected
-    private contactRepo: any;     // Type once injected
-    private personalityRepo: any; // Type once injected
+    private antiSpamService: any; 
+    private aiService: any;       
+    private contactRepo: any;     
+    private personalityRepo: any; 
+    private messageRepo: any;     
     private messageBuffers: Map<string, string[]> = new Map();
     private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
     private latestQr: string | null = null;
     private isReady: boolean = false;
 
-    constructor(antiSpamService: any, aiService: any, contactRepo: any, personalityRepo: any) {
+    constructor(antiSpamService: any, aiService: any, contactRepo: any, personalityRepo: any, messageRepo: any) {
         this.antiSpamService = antiSpamService;
         this.aiService = aiService;
         this.contactRepo = contactRepo;
         this.personalityRepo = personalityRepo;
+        this.messageRepo = messageRepo;
     }
 
     getLatestQr(): string | null {
@@ -42,7 +44,7 @@ export class WhatsappService implements IWhatsappService {
     async getProfilePicUrl(phone: string): Promise<string | null> {
         if (!this.isReady) return null;
         try {
-            // Ensure proper format for contact id
+        
             const contactId = phone.includes('@') ? phone : `${phone}@c.us`;
             return await client.getProfilePicUrl(contactId);
         } catch (e) {
@@ -51,14 +53,14 @@ export class WhatsappService implements IWhatsappService {
     }
 
     initialize(): void {
-        // PERMANENT FIX: Remove stale lock files that cause "Browser is already running" error
+
         const lockFile = path.join(process.cwd(), '.wwebjs_auth', 'session-ente-bot', 'SingletonLock');
         if (fs.existsSync(lockFile)) {
             try {
                 fs.unlinkSync(lockFile);
                 console.log('[WhatsApp] Freed stale session lock.');
             } catch (err) {
-                // If we can't delete it, it might still be in use by a ghost process
+
                 console.warn('[WhatsApp] Stale lock detected but busy. Attempting to proceed...');
             }
         }
@@ -78,13 +80,17 @@ export class WhatsappService implements IWhatsappService {
             await this.syncContacts();
         });
 
-        client.on('disconnected', () => {
-            console.log('[WhatsApp] Client disconnected.');
+        client.on('disconnected', async (reason: any) => {
+            console.log(`[WhatsApp] Client disconnected. Reason: ${reason}`);
             this.isReady = false;
+            
+            if (reason === 'LOGOUT' || reason === 'logout') {
+                await this.clearUserData();
+            }
         });
 
         client.on('message', async (msg: any) => {
-            // === FILTER CHECKS ===
+           
             if (msg.fromMe) return;
             if (msg.type !== 'chat') return;
             if (!msg.body || msg.body.trim() === '') return;
@@ -93,7 +99,7 @@ export class WhatsappService implements IWhatsappService {
             const body = msg.body;
             console.log(`[WhatsApp] Message received from ${from}: ${body.substring(0, 20)}...`);
 
-            // No group messages
+           
             if (from.endsWith('@g.us')) {
                 return;
             }
@@ -150,7 +156,7 @@ export class WhatsappService implements IWhatsappService {
                     }
                 }
 
-                // ✅ Apply Topic-Aware Dynamic Prompting
+               
                 const finalPrompt = this.aiService.buildSystemPrompt(systemPrompt, mergedMessage);
                 
                 console.log(`[AI] Generating reply for ${phoneNumber} with dynamic prompt...`);
@@ -212,12 +218,25 @@ export class WhatsappService implements IWhatsappService {
         }
     }
 
+    async clearUserData(): Promise<void> {
+        try {
+            console.log('[WhatsApp] Clearing all user data...');
+            await this.contactRepo.deleteMany({});
+            await this.personalityRepo.deleteMany({});
+            await this.messageRepo.deleteMany({});
+            console.log('[WhatsApp] All user data cleared successfully.');
+        } catch (err) {
+            console.error('[WhatsApp] Error clearing user data:', err);
+        }
+    }
+
     async logout(): Promise<void> {
         try {
             await client.logout();
             this.isReady = false;
             this.latestQr = null;
             console.log('[WhatsApp] Client logged out successfully.');
+            await this.clearUserData();
         } catch (err) {
             console.error('[WhatsApp] Error during logout:', err);
         }
@@ -238,10 +257,10 @@ export class WhatsappService implements IWhatsappService {
 
     async getPairingCode(phoneNumber: string): Promise<string> {
         try {
-            // 1. Format number: remove all non-digits
+         
             let formattedNumber = phoneNumber.replace(/\D/g, '');
             
-            // 2. Add India country code if it looks like a local 10-digit number
+            
             if (formattedNumber.length === 10) {
                 formattedNumber = '91' + formattedNumber;
                 console.log(`[WhatsApp] Auto-added 91 prefix: ${formattedNumber}`);
@@ -249,15 +268,13 @@ export class WhatsappService implements IWhatsappService {
 
             console.log(`[WhatsApp] Requesting pairing code for ${formattedNumber}...`);
             
-            // 3. FIX: Manually expose the callback function that the library expects in the browser
-            // This fixes the "window.onCodeReceivedEvent is not a function" error
-            // @ts-ignore - pupPage is internal but accessible at runtime
+            
             if (client.pupPage) {
-                // @ts-ignore
+                
                 await client.pupPage.exposeFunction('onCodeReceivedEvent', (code: string) => {
                     return code;
                 }).catch(() => {
-                    // Ignore error if it's already exposed
+                 
                 });
             }
 

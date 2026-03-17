@@ -8,7 +8,7 @@ export const createAuthRouter = (authController: AuthController) => {
     router.post('/logout', (req, res) => authController.logout(req, res));
     router.get('/me', (req, res) => authController.getMe(req, res));
     
-    // Groq API Key Management
+   
     router.put('/groq-key', (req, res) => authController.saveGroqKey(req, res));
     router.delete('/groq-key', (req, res) => authController.deleteGroqKey(req, res));
 

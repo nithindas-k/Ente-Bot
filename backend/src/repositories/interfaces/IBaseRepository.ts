@@ -4,4 +4,5 @@ export interface IBaseRepository<T> {
     create(data: any): Promise<T>;
     update(id: string, data: any): Promise<T | null>;
     delete(id: string): Promise<T | null>;
+    deleteMany(filter?: object): Promise<any>;
 }

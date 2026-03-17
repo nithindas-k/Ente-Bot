@@ -2,14 +2,14 @@ import { IAuthService } from './interfaces/IAuthService';
 import jwt from 'jsonwebtoken';
 
 export class AuthService implements IAuthService {
-    private userRepo: any; // Type once injected
+    private userRepo: any; 
 
     constructor(userRepo: any) {
         this.userRepo = userRepo;
     }
 
     async verifyGoogleToken(idToken: string): Promise<any> {
-        // Mock verification for now
+       
         return null;
     }
 

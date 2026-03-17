@@ -1,7 +1,7 @@
 import { IContactService } from './interfaces/IContactService';
 
 export class ContactService implements IContactService {
-    private contactRepo: any; // Type once injected
+    private contactRepo: any; 
 
     constructor(contactRepo: any) {
         this.contactRepo = contactRepo;

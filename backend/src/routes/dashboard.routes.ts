@@ -7,14 +7,12 @@ export const createDashboardRouter = (whatsappService: WhatsappService) => {
 
     router.get('/stats', async (req, res) => {
         try {
-            // 1. Get Active contacts count
+          
             const activeContacts = await Contact.countDocuments({ botEnabled: true });
 
-            // 2. Total replies today from summing message counts
             const contacts = await Contact.find({});
             const repliesToday = contacts.reduce((acc, c) => acc + (c.dailyMessageCount || 0), 0);
 
-            // 3. Get real WhatsApp status
             const rawStatus = whatsappService.getStatus();
             const status = rawStatus === 'connected' ? "Connected" : "Disconnected";
 

@@ -1,7 +1,7 @@
 import { IMessageService } from './interfaces/IMessageService';
 
 export class MessageService implements IMessageService {
-    private messageRepo: any; // Type once injected
+    private messageRepo: any; 
 
     constructor(messageRepo: any) {
         this.messageRepo = messageRepo;

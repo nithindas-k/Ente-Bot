@@ -23,9 +23,7 @@ export class AIService implements IAIService {
         console.log('[AI Service] API Key updated and client re-initialized. 🚀');
     }
 
-    // ============================================
-    // LOAD & PARSE DICTIONARY (Hybrid Mode)
-    // ============================================
+   
     private loadManglishDictionary(): void {
         try {
             const dictPath = path.join(__dirname, '../data/manglish_dictionary.txt');
@@ -77,9 +75,6 @@ export class AIService implements IAIService {
         return result;
     }
 
-    // ============================================
-    // MESSAGE ANALYZER
-    // ============================================
     private analyzeMessage(message: string) {
         const trimmed = message.trim();
         const words = trimmed.split(/\s+/);
@@ -97,9 +92,7 @@ export class AIService implements IAIService {
         };
     }
 
-    // ============================================
-    // SMART SAMPLING
-    // ============================================
+  
     private extractSmartSample(rawChat: string): string {
         const lines = rawChat.split('\n').filter(line => line.trim());
         if (lines.length <= 200) return lines.join('\n');
@@ -112,9 +105,7 @@ export class AIService implements IAIService {
         return ["=== EARLY MESSAGES ===", ...beginning, "=== MIDDLE MESSAGES ===", ...middle, "=== RECENT MESSAGES ===", ...end].join('\n');
     }
 
-    // ============================================
-    // REPLY CLEANER
-    // ============================================
+  
     private cleanReply(reply: string, newMessage: string): string {
         reply = reply.trim();
         if (reply.toLowerCase().startsWith(newMessage.toLowerCase())) {
@@ -133,9 +124,7 @@ export class AIService implements IAIService {
         return reply || "Mm da";
     }
 
-    // ============================================
-    // PROMPT BUILDERS
-    // ============================================
+    
     public buildSystemPrompt(personalityPrompt: string, newMessage: string): string {
         const m = this.analyzeMessage(newMessage);
         const category = m.isGreeting ? 'GREETING' : m.isReaction ? 'REACTION' : m.isFood ? 'FOOD' : m.isFeelings ? 'FEELINGS' : m.isStudy ? 'STUDY' : 'GENERAL';
@@ -173,9 +162,7 @@ Rules:
 `;
     }
 
-    // ============================================
-    // GENERATE REPLY (With Fallback)
-    // ============================================
+  
     async generateReply(systemPrompt: string, history: any[], newMessage: string): Promise<string> {
         const recentHistory = history.slice(-15).map(msg => ({
             role: (msg.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
@@ -196,7 +183,7 @@ Rules:
         };
 
         try {
-            // Try Primary
+            
             console.log(`[AI] Attempting ${this.PRIMARY_MODEL}...`);
             const response = await tryModel(this.PRIMARY_MODEL);
             const raw = response.choices[0]?.message?.content || "";

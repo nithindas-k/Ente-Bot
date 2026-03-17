@@ -3,12 +3,12 @@ const APP_CONSTANTS = {
         DAILY_LIMIT: 150,
         RATE_LIMIT_SEC: 5,
         DELAY: {
-            MIN: 1000, // ms
-            MAX: 4000  // ms
+            MIN: 1000, 
+            MAX: 4000  
         }
     },
     SESSION: {
-        HEALTH_CHECK_INTERVAL: 30 * 60 * 1000 // 30 minutes
+        HEALTH_CHECK_INTERVAL: 30 * 60 * 1000 
     }
 } as const;
 

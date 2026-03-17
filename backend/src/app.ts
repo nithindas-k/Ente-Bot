@@ -12,9 +12,9 @@ import { ContactRepository } from './repositories/contact.repository';
 import { PersonalityRepository } from './repositories/personality.repository';
 import { AntiSpamService } from './services/anti-spam.service';
 import { AIService } from './services/ai.service';
+import { MessageRepository } from './repositories/message.repository';
 import { WhatsappService } from './services/whatsapp.service';
 
-// Import Routes
 import { createAuthRouter } from './routes/auth.routes';
 import contactRoutes from './routes/contact.routes';
 import { createPersonalityRouter } from './routes/personality.routes';
@@ -26,26 +26,23 @@ import { UserRepository } from './repositories/user.repository';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
+
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
-
-// Routes are set up inside connectDB block to ensure dependencies are ready
 app.get('/health', (req: any, res: any) => {
     res.json({ status: 'ok', message: 'Ente Bot Backend Running' });
 });
 
-// Connect DB first
 connectDB().then(async () => {
-    // Initialize Bot Services
     const contactRepo = new ContactRepository();
     const personalityRepo = new PersonalityRepository();
     const userRepo = new UserRepository();
+    const messageRepo = new MessageRepository();
     const antiSpamService = new AntiSpamService(contactRepo);
     const aiService = new AIService();
     
-    // Check for saved Groq API key in DB
+    
     let user = await userRepo.findOne({});
     if (!user) {
         console.log('[Server] Creating default system user...');
@@ -61,14 +58,12 @@ connectDB().then(async () => {
         aiService.updateApiKey(user.groqApiKey);
     }
 
-    const whatsappService = new WhatsappService(antiSpamService, aiService, contactRepo, personalityRepo);
+    const whatsappService = new WhatsappService(antiSpamService, aiService, contactRepo, personalityRepo, messageRepo);
 
     whatsappService.initialize();
 
-    // Controllers
     const authController = new AuthController(null, userRepo, aiService);
 
-    // Routes
     app.use('/api/auth', createAuthRouter(authController));
     
     app.get('/api/contacts/dp/:phone', async (req, res) => {
@@ -122,7 +117,6 @@ connectDB().then(async () => {
         console.log(`[Server] running on port ${PORT}`);
     });
 
-    // Graceful shutdown — destroy WhatsApp/Chrome before nodemon kills node
     const shutdown = async () => {
         console.log('[Server] Shutting down gracefully...');
         await whatsappService.destroy();
