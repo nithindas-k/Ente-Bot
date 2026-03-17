@@ -9,6 +9,18 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import axios from "axios";
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -106,13 +118,44 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
           </div>
 
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-neutral-400 hover:text-red-400 hover:bg-red-400/5 rounded-lg group transition-all h-9 px-3"
-          >
-            <LogOut className="w-4 h-4 mr-2.5 group-hover:translate-x-1 transition-transform" />
-            <span className="font-medium text-[13px]">Sign Out</span>
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-neutral-400 hover:text-red-400 hover:bg-red-400/5 rounded-lg group transition-all h-9 px-3"
+              >
+                <LogOut className="w-4 h-4 mr-2.5 group-hover:translate-x-1 transition-transform" />
+                <span className="font-medium text-[13px]">Sign Out</span>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="border-neutral-900 bg-neutral-950">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">Heads up!</AlertDialogTitle>
+                <AlertDialogDescription className="text-neutral-400">
+                  Are you sure you want to sign out? This will clear your current local session data.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-neutral-800 text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={async () => {
+                    try {
+                      await axios.post("http://localhost:5000/api/auth/logout");
+                    } catch (e) {
+                      console.error("Logout API failed", e);
+                    }
+                    localStorage.clear();
+                    window.location.href = "/login";
+                  }}
+                  className="bg-red-600 hover:bg-red-700 text-white border-0"
+                >
+                  Sign Out
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
       </aside>
     </>

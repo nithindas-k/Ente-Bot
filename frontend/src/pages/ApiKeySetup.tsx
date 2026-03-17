@@ -3,6 +3,18 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShieldCheck, Globe, CheckCircle2, Copy, ExternalLink, ChevronRight, ChevronLeft, Lock, Zap, Trash2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
@@ -243,7 +255,6 @@ export default function ApiKeySetup() {
   };
 
   const handleDelete = async () => {
-      if (!confirm("Are you sure you want to delete your API Key? The bot will fallback to default settings.")) return;
       try {
           await axios.delete(`${API_BASE}/groq-key`);
           localStorage.removeItem("groq_api_key");
@@ -285,13 +296,36 @@ export default function ApiKeySetup() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <Button 
-                            onClick={handleDelete}
-                            variant="ghost" 
-                            className="h-12 px-6 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all font-black uppercase italic text-[10px] tracking-widest gap-2"
-                        >
-                            <Trash2 className="w-4 h-4" /> Delete API Key
-                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    className="h-12 px-6 rounded-2xl bg-red-500/5 border border-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-all font-black uppercase italic text-[10px] tracking-widest gap-2"
+                                >
+                                    <Trash2 className="w-4 h-4" /> Delete API Key
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="border-neutral-900 bg-neutral-950">
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-white">Wipe Memory?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-neutral-400">
+                                        This will remove your custom Groq API key. The bot will fallback to its default processing logic.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel className="border-neutral-800 text-neutral-400 hover:bg-neutral-900 hover:text-white">
+                                        Secure Key
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                        onClick={handleDelete}
+                                        className="bg-red-600 hover:bg-red-700 text-white border-0"
+                                    >
+                                        Delete Key
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
                         <Button 
                             onClick={() => navigate('/dashboard')}
                             className="h-12 px-8 rounded-2xl bg-white hover:bg-neutral-200 text-black font-black uppercase italic tracking-wider text-[10px] border-0"
