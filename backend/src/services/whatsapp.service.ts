@@ -28,6 +28,17 @@ export class WhatsappService implements IWhatsappService {
         return this.isReady ? 'connected' : 'disconnected';
     }
 
+    getAccountInfo(): any {
+        if (!this.isReady || !client.info) return null;
+        
+        const pushname = client.info.pushname || 'WhatsApp User';
+        return {
+            name: pushname,
+            phone: client.info.wid?.user || 'Unknown Number',
+            initials: pushname.substring(0, 2).toUpperCase()
+        };
+    }
+
     initialize(): void {
         // PERMANENT FIX: Remove stale lock files that cause "Browser is already running" error
         const lockFile = path.join(process.cwd(), '.wwebjs_auth', 'session-ente-bot', 'SingletonLock');

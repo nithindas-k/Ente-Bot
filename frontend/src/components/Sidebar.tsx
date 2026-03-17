@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -35,6 +36,29 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
+  const [account, setAccount] = useState<{name: string, phone: string, initials: string} | null>(null);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    const fetchAccount = async () => {
+        try {
+            const res = await axios.get("http://localhost:5000/api/auth/status");
+            if (res.data?.status === 'connected' && res.data?.account) {
+                setIsConnected(true);
+                setAccount(res.data.account);
+            } else {
+                setIsConnected(false);
+                setAccount(null);
+            }
+        } catch (e) {
+            console.error("Failed to fetch WhatsApp account info for sidebar", e);
+        }
+    };
+
+    fetchAccount();
+    const interval = setInterval(fetchAccount, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <>
@@ -105,17 +129,21 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* Bottom Profile / Logout Info */}
         <div className="p-3 border-t border-neutral-900 space-y-3">
           <div className="px-3 py-2 bg-neutral-900/50 rounded-xl flex items-center space-x-2.5 border border-neutral-800">
-            <div className="w-7 h-7 bg-neutral-800 rounded-full flex items-center justify-center text-emerald-500 text-[10px] font-bold border border-emerald-500/10">
-              ND
+            <div className={cn(
+                "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
+                isConnected ? "bg-neutral-800 text-emerald-500 border-emerald-500/20" : "bg-neutral-800 text-neutral-500 border-neutral-700"
+            )}>
+              {account ? account.initials : 'WB'}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold truncate text-white">Nithin Das</p>
-              <p className="text-[9px] text-neutral-500 truncate uppercase tracking-tighter">Admin Access</p>
+              <p className="text-[12px] font-semibold truncate text-white">{account ? account.name : 'WhatsApp Bot'}</p>
+              <p className="text-[9px] text-neutral-500 truncate uppercase tracking-tighter">
+                {account ? `+${account.phone}` : 'Not Connected'}
+              </p>
             </div>
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+            <div className={cn("w-1.5 h-1.5 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-neutral-600")} />
           </div>
 
           <AlertDialog>

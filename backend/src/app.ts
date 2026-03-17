@@ -80,7 +80,10 @@ connectDB().then(async () => {
 
     // Serve connection status
     app.get('/api/auth/status', (req, res) => {
-        res.json({ status: whatsappService.getStatus() });
+        res.json({ 
+            status: whatsappService.getStatus(),
+            account: whatsappService.getAccountInfo()
+        });
     });
 
     // WhatsApp Logout
