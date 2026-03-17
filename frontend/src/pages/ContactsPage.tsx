@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Settings, ShieldCheck, ShieldAlert } from "lucide-react";
+import { UserPlus, Settings, ShieldCheck, ShieldAlert, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import axios from "axios";
 
 interface Contact {
@@ -17,6 +18,7 @@ export default function ContactsPage() {
     const navigate = useNavigate();
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const fetchContacts = async () => {
         try {
@@ -42,6 +44,13 @@ export default function ContactsPage() {
         }
     };
 
+    const filteredContacts = contacts.filter((contact) => {
+        const name = (contact.name || "").toLowerCase();
+        const phone = (contact.phoneNumber || "").toLowerCase();
+        const search = searchTerm.toLowerCase();
+        return name.includes(search) || phone.includes(search);
+    });
+
     return (
         <div className="p-8 space-y-6 bg-neutral-950 min-h-screen text-white font-sans">
             <div className="flex items-center justify-between">
@@ -55,7 +64,22 @@ export default function ContactsPage() {
                 </Button>
             </div>
 
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                <div className="relative w-full max-w-md group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 group-focus-within:text-emerald-500 transition-colors" />
+                    <Input 
+                        placeholder="Search contacts by name or number..." 
+                        className="pl-10 h-11 bg-neutral-900/50 border-neutral-800 hover:border-neutral-700 transition-all font-sans"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="text-xs text-neutral-500 font-medium">
+                    Showing {filteredContacts.length} of {contacts.length} contacts
+                </div>
+            </div>
+
+            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 overflow-hidden relative">
                 <Table className="text-white">
                     <TableHeader className="border-b border-neutral-800">
                         <TableRow>
@@ -70,11 +94,20 @@ export default function ContactsPage() {
                              <TableRow>
                                 <TableCell colSpan={4} className="text-center py-8 text-neutral-500">Loading contacts...</TableCell>
                              </TableRow>
-                        ) : contacts.length === 0 ? (
+                        ) : filteredContacts.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-neutral-500">No contacts found. Whitelist someone to start!</TableCell>
+                                <TableCell colSpan={4} className="text-center py-12 text-neutral-500">
+                                    {searchTerm ? (
+                                        <div className="space-y-2">
+                                            <div className="text-lg font-medium text-neutral-400">No matching contacts</div>
+                                            <div className="text-sm">Try searching for a different name or number.</div>
+                                        </div>
+                                    ) : (
+                                        "No contacts found. Whitelist someone to start!"
+                                    )}
+                                </TableCell>
                             </TableRow>
-                        ) : contacts.map((contact) => (
+                        ) : filteredContacts.map((contact) => (
                             <TableRow key={contact._id} className="border-b border-neutral-800/50 hover:bg-neutral-800/30 transition-colors">
                                 <TableCell className="font-medium">{contact.name || "Unknown"}</TableCell>
                                 <TableCell>{contact.phoneNumber}</TableCell>

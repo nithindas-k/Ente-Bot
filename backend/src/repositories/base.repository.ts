@@ -21,7 +21,7 @@ export class BaseRepository<T extends Document> implements IBaseRepository<T> {
     }
 
     async update(id: string, data: any): Promise<T | null> {
-        return await this.model.findByIdAndUpdate(id, data, { new: true });
+        return await this.model.findByIdAndUpdate(id, data, { returnDocument: 'after' });
     }
 
     async delete(id: string): Promise<T | null> {

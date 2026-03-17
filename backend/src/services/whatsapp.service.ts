@@ -62,16 +62,16 @@ export class WhatsappService implements IWhatsappService {
         });
 
         client.on('message', async (msg: any) => {
+            // === FILTER CHECKS ===
+            if (msg.fromMe) return;
+            if (msg.type !== 'chat') return;
+            if (!msg.body || msg.body.trim() === '') return;
+            
             const from = msg.from;
             const body = msg.body;
             console.log(`[WhatsApp] Message received from ${from}: ${body.substring(0, 20)}...`);
 
-            // 7. No media spam (text only)
-            if (msg.type !== 'chat') {
-                return;
-            }
-
-            // 8. No group messages
+            // No group messages
             if (from.endsWith('@g.us')) {
                 return;
             }
@@ -128,7 +128,11 @@ export class WhatsappService implements IWhatsappService {
                     }
                 }
 
-                const reply = await this.aiService.generateReply(systemPrompt, [], mergedMessage);
+                // ✅ Apply Topic-Aware Dynamic Prompting
+                const finalPrompt = this.aiService.buildSystemPrompt(systemPrompt, mergedMessage);
+                
+                console.log(`[AI] Generating reply for ${phoneNumber} with dynamic prompt...`);
+                const reply = await this.aiService.generateReply(finalPrompt, [], mergedMessage);
 
                 await this.antiSpamService.applyHumanDelay();
 
