@@ -70,6 +70,13 @@ connectDB().then(async () => {
 
     // Routes
     app.use('/api/auth', createAuthRouter(authController));
+    
+    // DP Fetcher Route (Must be before general contact routes)
+    app.get('/api/contacts/dp/:phone', async (req, res) => {
+        const dpUrl = await whatsappService.getProfilePicUrl(req.params.phone);
+        res.json({ url: dpUrl });
+    });
+    
     app.use('/api/contacts', contactRoutes);
     app.use('/api/messages', messageRoutes);
     

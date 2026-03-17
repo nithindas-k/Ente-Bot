@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { UserPlus, Settings, ShieldCheck, ShieldAlert, Search, Users, Filter, Bot } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -12,6 +11,65 @@ interface Contact {
     phoneNumber: string;
     botEnabled: boolean;
     personalityId?: string;
+}
+
+function ContactCard({ contact, onToggle, onClickSettings }: { contact: Contact, onToggle: () => void, onClickSettings: () => void }) {
+    const [dp, setDp] = useState<string | null>(null);
+
+    useEffect(() => {
+        axios.get(`http://localhost:5000/api/contacts/dp/${contact.phoneNumber}`)
+            .then(res => setDp(res.data.url))
+            .catch(() => {});
+    }, [contact.phoneNumber]);
+
+    const initials = (contact.name || "U").substring(0, 2).toUpperCase();
+
+    return (
+        <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-5 flex flex-col justify-between hover:border-neutral-700 transition-all group hover:shadow-lg hover:shadow-black/50">
+            <div className="flex items-center space-x-4 w-full mb-6">
+                {dp ? (
+                    <img src={dp} alt={contact.name} className="w-12 h-12 rounded-full object-cover shrink-0 border border-neutral-800" />
+                ) : (
+                    <div className="w-12 h-12 rounded-full bg-neutral-800 flex items-center justify-center text-sm font-bold text-neutral-500 shrink-0 border border-neutral-700">
+                        {initials}
+                    </div>
+                )}
+                <div className="flex-1 min-w-0">
+                    <h3 className="text-white text-sm font-bold truncate leading-tight">{contact.name || "Unknown"}</h3>
+                    <p className="text-neutral-500 text-xs truncate mt-1 tracking-wide">+{contact.phoneNumber}</p>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between mt-auto">
+                <button 
+                    onClick={onToggle}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all ${
+                        contact.botEnabled 
+                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20' 
+                        : 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700'
+                    }`}
+                >
+                    {contact.botEnabled ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
+                    <span>{contact.botEnabled ? 'Active' : 'Ignored'}</span>
+                </button>
+                <div className="flex items-center gap-2">
+                     {contact.personalityId && (
+                         <div className="w-7 h-7 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center" title="Custom Personality Assigned">
+                             <Bot className="w-3.5 h-3.5 text-blue-500" />
+                         </div>
+                     )}
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-neutral-400 hover:text-white h-8 w-8 p-0 rounded-full bg-neutral-800/50"
+                        onClick={onClickSettings}
+                    >
+                        <Settings className="w-4 h-4" />
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default function ContactsPage() {
@@ -181,65 +239,35 @@ export default function ContactsPage() {
                 )}
             </div>
 
-            <div className="bg-neutral-900 border border-neutral-800 rounded-xl p-4 overflow-hidden relative">
-                <Table className="text-white">
-                    <TableHeader className="border-b border-neutral-800">
-                        <TableRow>
-                            <TableHead className="text-neutral-400">Name</TableHead>
-                            <TableHead className="text-neutral-400">Phone</TableHead>
-                            <TableHead className="text-neutral-400">Bot Status</TableHead>
-                            <TableHead className="text-right text-neutral-400">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {loading ? (
-                             <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-neutral-500">Loading contacts...</TableCell>
-                             </TableRow>
-                        ) : filteredContacts.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={4} className="text-center py-12 text-neutral-500">
-                                    {searchTerm ? (
-                                        <div className="space-y-2">
-                                            <div className="text-lg font-medium text-neutral-400">No matching contacts</div>
-                                            <div className="text-sm">Try searching for a different name or number.</div>
-                                        </div>
-                                    ) : (
-                                        "No contacts found. Whitelist someone to start!"
-                                    )}
-                                </TableCell>
-                            </TableRow>
-                        ) : filteredContacts.map((contact) => (
-                            <TableRow key={contact._id} className="border-b border-neutral-800/50 hover:bg-neutral-800/30 transition-colors">
-                                <TableCell className="font-medium">{contact.name || "Unknown"}</TableCell>
-                                <TableCell>{contact.phoneNumber}</TableCell>
-                                <TableCell>
-                                    <button 
-                                        onClick={() => toggleWhitelist(contact._id)}
-                                        className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-semibold transition-all ${
-                                            contact.botEnabled 
-                                            ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' 
-                                            : 'bg-neutral-800 text-neutral-400 border border-neutral-700'
-                                        }`}
-                                    >
-                                        {contact.botEnabled ? <ShieldCheck className="w-3 h-3" /> : <ShieldAlert className="w-3 h-3" />}
-                                        <span>{contact.botEnabled ? 'Whitelisted' : 'Ignored'}</span>
-                                    </button>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="text-neutral-400 hover:text-white"
-                                        onClick={() => navigate(`/personality/${contact._id}`)}
-                                    >
-                                        <Settings className="w-4 h-4" />
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
+            <div className="w-full">
+                {loading ? (
+                    <div className="text-center py-12 text-neutral-500 w-full col-span-full">Loading contacts...</div>
+                ) : filteredContacts.length === 0 ? (
+                    <div className="text-center py-20 bg-neutral-900 border border-neutral-800 rounded-2xl col-span-full">
+                        {searchTerm ? (
+                            <div className="space-y-2">
+                                <div className="text-lg font-medium text-neutral-400">No matching contacts</div>
+                                <div className="text-sm text-neutral-500">Try adjusting your filters or search term.</div>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <div className="text-lg font-medium text-neutral-400">No contacts found</div>
+                                <div className="text-sm text-neutral-500">Wait for messages to arrive or manually add someone!</div>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {filteredContacts.map(contact => (
+                            <ContactCard 
+                                key={contact._id} 
+                                contact={contact} 
+                                onToggle={() => toggleWhitelist(contact._id)} 
+                                onClickSettings={() => navigate(`/personality/${contact._id}`)}
+                            />
                         ))}
-                    </TableBody>
-                </Table>
+                    </div>
+                )}
             </div>
         </div>
     );

@@ -39,6 +39,17 @@ export class WhatsappService implements IWhatsappService {
         };
     }
 
+    async getProfilePicUrl(phone: string): Promise<string | null> {
+        if (!this.isReady) return null;
+        try {
+            // Ensure proper format for contact id
+            const contactId = phone.includes('@') ? phone : `${phone}@c.us`;
+            return await client.getProfilePicUrl(contactId);
+        } catch (e) {
+            return null;
+        }
+    }
+
     initialize(): void {
         // PERMANENT FIX: Remove stale lock files that cause "Browser is already running" error
         const lockFile = path.join(process.cwd(), '.wwebjs_auth', 'session-ente-bot', 'SingletonLock');
