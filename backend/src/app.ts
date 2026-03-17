@@ -83,7 +83,19 @@ connectDB().then(async () => {
         res.json({ status: whatsappService.getStatus() });
     });
 
-    // Initialize Dashboard Routes with dependencies
+    // WhatsApp Logout
+    app.post('/api/auth/whatsapp/logout', async (req, res) => {
+        await whatsappService.logout();
+        res.json({ success: true, message: "Logged out from WhatsApp." });
+    });
+
+    // WhatsApp Refresh QR
+    app.post('/api/auth/whatsapp/refresh', async (req, res) => {
+        await whatsappService.refreshQr();
+        res.json({ success: true, message: "Refreshing QR code." });
+    });
+
+    
     app.use('/api/dashboard', createDashboardRouter(whatsappService));
     app.use('/api/personalities', createPersonalityRouter(aiService));
 

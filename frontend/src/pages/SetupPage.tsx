@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldCheck, Globe, ChevronRight, ChevronLeft, ExternalLink,  Smartphone, Monitor, Camera } from "lucide-react";
+import { ShieldCheck, Globe, ChevronRight, ChevronLeft, ExternalLink, ArrowRight, Camera, CheckCircle2, LogOut, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import QRScanner from "@/components/QRScanner";
+import axios from "axios";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 // ── MOBILE SHELL ──────────────────────────────────────────────
 function PhoneFrame({ children, showHeader = false, title = "" }: { children: React.ReactNode; showHeader?: boolean; title?: string }) {
@@ -114,15 +126,26 @@ const Steps = [
             <PhoneFrame showHeader title="Linked devices">
                 <div className="h-full flex flex-col bg-[#0b141a] relative overflow-hidden">
                     <div className="py-8 flex flex-col items-center text-center space-y-6 px-6">
-                        {/* More realistic illustration */}
-                        <div className="relative w-full h-24 flex items-center justify-center">
-                            <div className="absolute left-[20%] w-14 h-24 bg-neutral-800 rounded-xl border-2 border-[#00a884]/30 flex items-center justify-center -rotate-6 shadow-xl">
-                                <Smartphone className="w-6 h-6 text-neutral-500" />
+                        {/* Realistic illustration replacing icons */}
+                        <div className="relative w-full h-[100px] flex items-center justify-center mb-2">
+                            <div className="relative flex items-center justify-center w-[140px] h-full mx-auto tracking-tighter">
+                                {/* Monitor (Dashed) */}
+                                <div className="w-[105px] h-[75px] rounded-[12px] border-[2px] border-dashed border-[#00a884]/60 bg-[#0b141a] absolute right-0 z-10 flex text-center items-center justify-center pb-2">
+                                     <div className="flex flex-col items-center translate-x-3 mt-3">
+                                         <div className="w-8 h-5 border-[2px] border-neutral-600/60 rounded-[3px]" />
+                                         <div className="w-2 h-[3px] bg-neutral-600/60" />
+                                         <div className="w-6 h-[2px] bg-neutral-600/60 rounded-full" />
+                                     </div>
+                                </div>
+                                {/* Phone (Solid) */}
+                                <div className="w-[60px] h-[95px] rounded-[14px] border-[2px] border-[#00a884] bg-[#0b141a] shadow-lg absolute left-0 z-20 pt-4 flex justify-center">
+                                     <div className="w-[14px] h-[22px] border-[2px] border-neutral-600/60 rounded-[4px] absolute right-3 mt-1" />
+                                </div>
+                                {/* Arrow */}
+                                <div className="absolute right-[46px] z-10 bottom-[38%] translate-y-1/2">
+                                     <ArrowRight className="w-[18px] h-[18px] text-[#00a884]" strokeWidth={2.5} />
+                                </div>
                             </div>
-                            <div className="absolute right-[20%] w-24 h-16 bg-neutral-800 rounded-lg border-2 border-dashed border-[#00a884]/30 flex items-center justify-center rotate-3 shadow-xl">
-                                <Monitor className="w-8 h-8 text-neutral-500" />
-                            </div>
-                            
                         </div>
 
                         <p className="text-[#8696a0] text-[13px] pt-4 leading-snug">
@@ -136,34 +159,7 @@ const Steps = [
                         </div>
                     </div>
 
-                    <div className="flex-1 bg-[#111b21]/50 mt-2 px-4 py-4 border-t border-neutral-800/50">
-                        <p className="text-[#8696a0] text-[11px] font-bold uppercase tracking-wider mb-4 opacity-70">Device Status</p>
-                        
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-4 group opacity-60">
-                                <div className="w-10 h-10 rounded-full bg-neutral-800/50 flex items-center justify-center">
-                                    <Monitor className="w-5 h-5 text-neutral-400" />
-                                </div>
-                                <div className="flex-1 border-b border-neutral-800/30 pb-3">
-                                    <div className="text-[#e9edef] text-[14px]">Windows</div>
-                                    <div className="text-[#8696a0] text-[12px]">Last active today at 12:29 AM</div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-4 group opacity-60">
-                                <div className="w-10 h-10 rounded-full bg-neutral-800/50 flex items-center justify-center">
-                                    <Globe className="w-5 h-5 text-neutral-400" />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="text-[#e9edef] text-[14px]">Google Chrome (Mac OS)</div>
-                                    <div className="text-[#8696a0] text-[12px]">Last active yesterday at 11:15 PM</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <p className="text-[#8696a0] text-[11px] mt-6 text-center italic">
-                            Tap a device to log out.
-                        </p>
-                    </div>
+                    
                 </div>
             </PhoneFrame>
         )
@@ -184,7 +180,7 @@ const Steps = [
                     {/* Mock Camera Viewfinder */}
                     <div className="w-[210px] h-[210px] bg-black/40 rounded-3xl border-2 border-neutral-800/30 relative flex items-center justify-center overflow-hidden">
                         {/* The actual live QR scanner goes here */}
-                        <div className="w-full h-full p-3 flex items-center justify-center">
+                        <div className="absolute inset-0 p-5 flex items-center justify-center">
                             <QRScanner isWidget />
                         </div>
 
@@ -195,7 +191,7 @@ const Steps = [
                         <div className="absolute bottom-4 right-4 w-6 h-6 border-b-2 border-r-2 border-[#00a884] rounded-br-lg" />
 
                         {/* Scanning laser line */}
-                        <div className="absolute left-0 right-0 h-0.5 bg-[#00a884]/50 top-1/2 animate-scan shadow-[0_0_15px_rgba(0,168,132,0.8)]" />
+                        <div className="absolute left-6 right-6 h-0.5 bg-[#00a884] top-1/2 -translate-y-1/2 animate-scan shadow-[0_0_15px_rgba(0,168,132,0.8)] z-10" />
                     </div>
                     
                     <div className="absolute bottom-10 flex flex-col items-center gap-2 opacity-40">
@@ -213,10 +209,128 @@ const Steps = [
 // ── MAIN PAGE ──────────────────────────────────────────────────
 export default function SetupPage() {
     const [cur, setCur] = useState(0);
+    const [isConnected, setIsConnected] = useState(false);
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [hasApiKey, setHasApiKey] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const checkStatus = async () => {
+            try {
+                const res = await axios.get("http://localhost:5000/api/auth/status");
+                setIsConnected(res.data?.status === 'connected');
+
+                // Check API Key status
+                const userRes = await axios.get("http://localhost:5000/api/auth/me");
+                setHasApiKey(!!userRes.data?.user?.groqApiKey);
+            } catch (err) {
+                console.error("Failed to fetch WhatsApp or User status", err);
+            }
+        };
+
+        checkStatus();
+        const interval = setInterval(checkStatus, 3000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const handleLogout = async () => {
+        setIsLoggingOut(true);
+        try {
+            await axios.post("http://localhost:5000/api/auth/whatsapp/logout");
+            setIsConnected(false);
+            setCur(0);
+        } catch (err) {
+            console.error("Logout failed", err);
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     const nextStep = () => setCur(prev => Math.min(prev + 1, Steps.length - 1));
     const prevStep = () => setCur(prev => Math.max(prev - 1, 0));
+
+    // Connected UI
+    if (isConnected) {
+        return (
+            <div className="w-full flex flex-col items-center justify-center py-20 animate-in fade-in duration-700">
+                <div className="w-full max-w-md bg-neutral-900/50 border border-neutral-800/60 rounded-3xl p-8 sm:p-12 text-center space-y-8 backdrop-blur-md shadow-2xl">
+                    
+                    <div className="mx-auto w-16 h-16 bg-[#00a884]/20 rounded-full flex items-center justify-center relative">
+                        <div className="absolute inset-0 bg-[#00a884]/20 rounded-full animate-ping opacity-30 delay-150"></div>
+                        <CheckCircle2 className="w-8 h-8 text-[#00a884]" strokeWidth={2.5} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <h1 className="text-2xl font-bold text-white tracking-tight">
+                            WhatsApp Connected
+                        </h1>
+                        <p className="text-neutral-400 text-[13px] leading-relaxed max-w-[280px] mx-auto">
+                            Your Ente Bot is securely linked and actively listening for incoming messages.
+                        </p>
+                    </div>
+
+                    <div className="flex justify-center">
+                        <div className="bg-[#00a884]/10 border border-[#00a884]/20 rounded-full px-4 py-2 flex items-center gap-2">
+                            <Wifi className="w-3.5 h-3.5 text-[#00a884] animate-pulse" />
+                            <span className="text-xs font-semibold text-[#00a884] uppercase tracking-wider">Bot Active</span>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                        {hasApiKey ? (
+                            <Button 
+                                onClick={() => navigate('/dashboard')}
+                                className="bg-white hover:bg-neutral-200 text-black font-medium px-6 h-10 rounded-lg group text-sm w-full sm:w-auto shadow-sm"
+                            >
+                                Go to Dashboard
+                                <ExternalLink className="w-3.5 h-3.5 ml-2 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+                            </Button>
+                        ) : (
+                            <Button 
+                                onClick={() => navigate('/api-setup')}
+                                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium px-6 h-10 rounded-lg group text-sm w-full sm:w-auto shadow-sm transition-all"
+                            >
+                                Configure API Key 
+                                <ArrowRight className="w-3.5 h-3.5 ml-2 group-hover:translate-x-1 transition-transform" />
+                            </Button>
+                        )}
+
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button 
+                                    variant="outline" 
+                                    className="border-neutral-800 hover:bg-red-500/10 hover:text-red-500 hover:border-red-500/30 text-neutral-400 font-medium px-6 h-10 rounded-lg w-full sm:w-auto text-sm transition-all"
+                                >
+                                    Disconnect <LogOut className="w-3.5 h-3.5 ml-2 opacity-70" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="bg-neutral-900 border border-neutral-800 text-white p-6 rounded-2xl w-[90vw] sm:max-w-md mx-auto my-auto fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle className="text-xl font-bold">Disconnect WhatsApp?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-neutral-400">
+                                        This will log your bot out of the current WhatsApp session. You will need to scan the QR code again to reconnect.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter className="mt-6 flex flex-col sm:flex-row gap-2 w-full">
+                                    <AlertDialogCancel className="w-full sm:w-1/2 bg-neutral-800 border-neutral-700 text-white hover:bg-neutral-700 hover:text-white sm:mt-0">
+                                        Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction 
+                                        onClick={handleLogout}
+                                        disabled={isLoggingOut}
+                                        className="w-full sm:w-1/2 bg-red-600 hover:bg-red-700 text-white"
+                                    >
+                                        {isLoggingOut ? "Disconnecting..." : "Disconnect"}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full flex flex-col items-center justify-center py-4 md:py-10 animate-in fade-in duration-700">

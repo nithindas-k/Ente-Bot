@@ -189,4 +189,28 @@ export class WhatsappService implements IWhatsappService {
             console.warn('[WhatsApp] Error during destroy:', err);
         }
     }
+
+    async logout(): Promise<void> {
+        try {
+            await client.logout();
+            this.isReady = false;
+            this.latestQr = null;
+            console.log('[WhatsApp] Client logged out successfully.');
+        } catch (err) {
+            console.error('[WhatsApp] Error during logout:', err);
+        }
+    }
+
+    async refreshQr(): Promise<void> {
+        try {
+            console.log('[WhatsApp] Force refreshing QR Code (destroying client)...');
+            this.latestQr = null;
+            this.isReady = false;
+            await client.destroy();
+            console.log('[WhatsApp] Client destroyed. Re-initializing...');
+            client.initialize(); 
+        } catch (err) {
+            console.error('[WhatsApp] Error during QR refresh:', err);
+        }
+    }
 }
