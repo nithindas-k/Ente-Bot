@@ -40,6 +40,7 @@ const client = new Client({
     }),
     puppeteer: {
         headless: true,
+        protocolTimeout: 60000, 
         executablePath: finalChromePath,
         args: process.platform === 'win32' ? [
             '--no-sandbox',
