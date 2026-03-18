@@ -242,16 +242,31 @@ export class WhatsappService implements IWhatsappService {
         }
     }
 
+    private isRefreshingQr: boolean = false;
+
     async refreshQr(): Promise<void> {
+        if (this.isRefreshingQr) {
+            console.log('[WhatsApp] Refresh already in progress, ignoring request...');
+            return;
+        }
+
         try {
+            this.isRefreshingQr = true;
             console.log('[WhatsApp] Force refreshing QR Code (destroying client)...');
             this.latestQr = null;
             this.isReady = false;
+            
             await client.destroy();
             console.log('[WhatsApp] Client destroyed. Re-initializing...');
-            client.initialize(); 
+            
+            // Give the OS a moment to free up RAM before re-launching
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            await client.initialize(); 
         } catch (err) {
             console.error('[WhatsApp] Error during QR refresh:', err);
+        } finally {
+            this.isRefreshingQr = false;
         }
     }
 

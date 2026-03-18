@@ -48,7 +48,13 @@ const client = new Client({
             '--no-zygote',
             '--single-process',
             '--disable-extensions',
-            '--disable-blink-features=AutomationControlled'
+            '--disable-blink-features=AutomationControlled',
+            '--disable-canvas-aa',
+            '--disable-2d-canvas-clip-aa',
+            '--disable-gl-drawing-for-tests',
+            '--no-first-run',
+            '--no-default-browser-check',
+            '--js-flags="--max-old-space-size=256"'
         ]
     }
 });
