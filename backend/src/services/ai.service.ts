@@ -25,7 +25,6 @@ export class AIService implements IAIService {
 
     private loadManglishDictionary(): void {
         try {
-            // Check both src/data (dev) and dist/data (prod)
             const possiblePaths = [
                 path.join(process.cwd(), 'src/data/manglish_dictionary.txt'),
                 path.join(process.cwd(), 'dist/data/manglish_dictionary.txt'),
@@ -43,6 +42,7 @@ export class AIService implements IAIService {
             if (!dictPath) throw new Error('Not found');
 
             const fullContent = fs.readFileSync(dictPath, 'utf-8');
+            // Split by section headers e.g. === GREETINGS ===
             const sections = fullContent.split(/===\s+(.*?)\s+===/g);
             for (let i = 1; i < sections.length; i += 2) {
                 const title = sections[i]?.trim();
@@ -57,40 +57,34 @@ export class AIService implements IAIService {
         }
     }
 
-    private getRelevantSlang(category: string): string {
-        const universalSections = [
+    private getRelevantSlang(analysis: any): string {
+        const categories = new Set<string>([
             'ADDRESS WORDS',
             'REACTIONS & EXPRESSIONS',
             'APPROVAL / POSITIVE SLANG',
             'AGREEMENT / ACKNOWLEDGMENT',
             'COMMON MALAYALAM WORDS'
-        ];
+        ]);
         
-        const categoryMap: Record<string, string> = {
-            'GREETING': 'GREETINGS',
-            'FOOD': 'FOOD WORDS',
-            'FEELINGS': 'FEELINGS & MOOD',
-            'STUDY': 'STUDY / COLLEGE SLANG',
-            'REACTION': 'REACTIONS & EXPRESSIONS'
-        };
+        if (analysis.isGreeting) categories.add('GREETINGS');
+        if (analysis.isFood) categories.add('FOOD WORDS');
+        if (analysis.isFeelings) categories.add('FEELINGS & MOOD');
+        if (analysis.isStudy) categories.add('STUDY / COLLEGE SLANG');
+        if (analysis.isReaction) categories.add('REACTIONS & EXPRESSIONS');
+        if (analysis.isQuestion) categories.add('ACTIONS & QUESTIONS');
 
         let result = '';
-        universalSections.forEach(section => {
+        categories.forEach(section => {
             const content = this.dictionarySections.get(section);
-            if (content) result += `\n[${section}]\n${content.substring(0, 500)}\n`;
+            if (content) result += `\n[${section}]\n${content}\n`;
         });
 
-        const targetSection = categoryMap[category];
-        if (targetSection && !universalSections.includes(targetSection)) {
-            const content = this.dictionarySections.get(targetSection);
-            if (content) result += `\n[${targetSection}]\n${content.substring(0, 500)}\n`;
-        }
-
+        console.log(`[AI] Optimized Prompt: Using ${categories.size}/${this.dictionarySections.size} slang categories. 🎯`);
         return result;
     }
 
     private analyzeMessage(message: string) {
-        const trimmed = message.trim();
+        const trimmed = message.trim().toLowerCase();
         const words = trimmed.split(/\s+/);
         return {
             length: words.length,
@@ -98,17 +92,17 @@ export class AIService implements IAIService {
             isGreeting: /^(hi|hlo|hloo|hlw|hai|haii|hello|hey|hei|sup|gm|gn)\b/i.test(trimmed),
             isEmoji: /^[\p{Emoji}\p{Extended_Pictographic}\s]+$/u.test(trimmed),
             isShort: words.length <= 3,
-            isFood: /\b(choru|chaya|kaapi|thinno|kazhichu|kudichoo)\b/i.test(trimmed),
-            isFeelings: /\b(tired|bore|sad|happy|madi|vishamam)\b/i.test(trimmed),
-            isStudy: /\b(padikkunno|exam|class|college)\b/i.test(trimmed),
-            isReaction: /^(eehh|oo|hmm|ayyo|potti|lol|haha)\b/i.test(trimmed),
+            isFood: /\b(choru|chaya|kaapi|thinno|kazhichu|kudichoo|food|biriyani|kazhicho)\b/i.test(trimmed),
+            isFeelings: /\b(tired|bore|sad|happy|madi|vishamam|paavam|kalippu|shokam)\b/i.test(trimmed),
+            isStudy: /\b(padikkunno|exam|class|college|bunk|padikkan|result)\b/i.test(trimmed),
+            isReaction: /^(eehh|oo|hmm|ayyo|potti|lol|haha|ayyo|enthuvade|entha)\b/i.test(trimmed),
         };
     }
 
     private extractSmartSample(rawChat: string): string {
         const lines = rawChat.split('\n').filter(line => line.trim());
         if (lines.length <= 200) return lines.join('\n');
-        return lines.slice(-200).join('\n'); // Just take last 200 for simplicity and memory
+        return lines.slice(-200).join('\n');
     }
 
     private cleanReply(reply: string, newMessage: string): string {
@@ -134,7 +128,7 @@ export class AIService implements IAIService {
 
     public buildSystemPrompt(personalityPrompt: string, newMessage: string): string {
         const fullDict = this.getFullDictionaryContents();
-        const m = this.analyzeMessage(newMessage);
+        console.log(`[AI] Full Context Enabled: Including ${this.dictionarySections.size} slang categories for maximum accuracy. 🚀`);
 
         return `
 ${personalityPrompt}
@@ -144,16 +138,14 @@ ${fullDict}
 
 === THE WAY (MANDATORY WORKFLOW) ===
 1. UNDERSTAND: Deeply analyze the user's message.
-2. LOOKUP: Find the relevant words and style in the dictionary above.
+2. LOOKUP: Use ONLY the slang and words provided in the dictionary above.
 3. DRAFT: Create a response as a casual Malayali buddy.
-4. VERIFY: Before outputting, check if the response sounds like a real Kerala WhatsApp chat. If it sounds like an AI or is too formal, REWRITE it using Slang from the dictionary.
+4. VERIFY: If it sounds like an AI, REWRITE it using Slang from the dictionary. sound like a "Malayali Chunk" (Best friend).
 
 === RULES ===
-- NEVER say "I am an AI" or "As a language model".
-- Use "Da", "Aliya", "Machane" naturally as per the dictionary.
-- If the user asks a question, explain it using simple Manglish.
-- Keep the length similar to the user's message unless explaining something technical.
-- Always sound like a "Chunk" (best friend).
+- NEVER say "I am an AI" or "language model".
+- Use "Da", "Aliya", "Machane" naturally.
+- Always sound like a "Chunk".
 `;
     }
 
@@ -210,7 +202,7 @@ ${fullDict}
             });
             return response.choices[0]?.message?.content || "";
         } catch (error) {
-            return " Casual Malayali friend.";
+            return "You are a casual Malayali friend.";
         }
     }
 }
