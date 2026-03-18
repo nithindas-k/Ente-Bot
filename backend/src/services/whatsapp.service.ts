@@ -7,8 +7,10 @@ import { EventEmitter } from 'events';
 interface SessionData {
     client: Client;
     lastQr: string | null;
+    isAuthenticated: boolean;
     isReady: boolean;
     isRefreshing: boolean;
+    account: any | null;
 }
 
 export class WhatsappService extends EventEmitter implements IWhatsappService {
@@ -92,7 +94,9 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 client,
                 lastQr: null,
                 isReady: false,
-                isRefreshing: false
+                isAuthenticated: false,
+                isRefreshing: false,
+                account: null
             };
             this.sessions.set(sessionId, session);
             this.setupClientEvents(sessionId, client);
@@ -116,7 +120,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             const session = this.sessions.get(sessionId);
             if (session) {
                 session.lastQr = null;
-                // session.isReady = true; // Wait for 'ready' for full chat sync but authenticated is enough to hide QR
+                session.isAuthenticated = true;
                 this.emit('authenticated', { sessionId });
             }
         });
@@ -135,7 +139,17 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             const session = this.sessions.get(sessionId);
             if (session) {
                 session.isReady = true;
+                session.isAuthenticated = true;
                 session.lastQr = null;
+                
+                // Fetch info after ready
+                if (session.client.info) {
+                    session.account = {
+                        name: session.client.info.pushname || 'User',
+                        phone: session.client.info.wid?.user || 'Unknown'
+                    };
+                }
+
                 this.emit('ready', { sessionId });
                 await this.syncContacts(sessionId);
             }
@@ -281,13 +295,20 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
 
     getSessionStatus(sessionId: string) {
         const session = this.sessions.get(sessionId);
+        
+        if (!session) return { status: 'disconnected', account: null };
+
+        let status: 'disconnected' | 'initializing' | 'qr-ready' | 'authenticated' | 'connected' = 'initializing';
+        
+        if (session.isReady) status = 'connected';
+        else if (session.isAuthenticated) status = 'authenticated';
+        else if (session.lastQr) status = 'qr-ready';
+
         return {
-            status: session?.isReady ? 'connected' : 'disconnected',
-            qr: session?.lastQr,
-            account: session?.isReady && session.client.info ? {
-                name: session.client.info.pushname || 'User',
-                phone: session.client.info.wid?.user || 'Unknown'
-            } : null
+            status,
+            qr: session.lastQr,
+            account: session.account,
+            sessionId
         };
     }
 
