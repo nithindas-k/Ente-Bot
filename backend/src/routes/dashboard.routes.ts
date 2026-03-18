@@ -13,7 +13,8 @@ export const createDashboardRouter = (whatsappService: WhatsappService) => {
             const contacts = await Contact.find({});
             const repliesToday = contacts.reduce((acc, c) => acc + (c.dailyMessageCount || 0), 0);
 
-            const rawStatus = whatsappService.getStatus();
+            const sessionId = (req.query.sessionId as string) || 'default';
+            const { status: rawStatus } = whatsappService.getSessionStatus(sessionId);
             const status = rawStatus === 'connected' ? "Connected" : "Disconnected";
 
             res.json({

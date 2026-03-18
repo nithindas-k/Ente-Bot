@@ -7,12 +7,14 @@ import PersonalityPage from './pages/PersonalityPage';
 import ApiKeySetup from './pages/ApiKeySetup';
 import HowToUsePage from './pages/HowToUsePage';
 import { Layout } from './components/Layout';
+import { WhatsAppProvider } from './context/WhatsAppContext';
 
 function App() {
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
+      <WhatsAppProvider>
+        <Layout>
+          <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/setup" element={<SetupPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
@@ -22,7 +24,8 @@ function App() {
           <Route path="/how-to-use" element={<HowToUsePage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
-      </Layout>
+        </Layout>
+      </WhatsAppProvider>
     </BrowserRouter>
   );
 }

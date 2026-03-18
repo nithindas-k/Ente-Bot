@@ -9,19 +9,22 @@ import { API_BASE_URL } from "@/config/api.config";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
+import { useWhatsApp } from "@/context/WhatsAppContext";
+
 export default function DashboardPage() {
+    const { status: waStatus } = useWhatsApp();
     const navigate = useNavigate();
     const container = useRef<HTMLDivElement>(null);
     const [stats, setStats] = useState({
-        status: "Disconnected",
         repliesToday: 0,
         activeContacts: 0
     });
 
     useEffect(() => {
         const fetchStats = async () => {
+            const sid = localStorage.getItem('ente_bot_session_id') || 'default';
             try {
-                const response = await axios.get(`${API_BASE_URL}/api/dashboard/stats`);
+                const response = await axios.get(`${API_BASE_URL}/api/dashboard/stats?sessionId=${sid}`);
                 setStats(response.data);
             } catch (error) {
                 console.error("Error fetching stats:", error);
@@ -95,8 +98,8 @@ export default function DashboardPage() {
                         <AlertCircle className="w-3.5 h-3.5 text-red-500" />
                     </CardHeader>
                     <CardContent>
-                        <div className={`text-xl font-bold ${stats.status === "Connected" ? "text-emerald-500" : "text-red-500"}`}>
-                            {stats.status}
+                        <div className={`text-xl font-bold ${waStatus.status === "connected" || waStatus.status === "authenticated" ? "text-emerald-500" : "text-red-500"}`}>
+                            {waStatus.status.charAt(0).toUpperCase() + waStatus.status.slice(1)}
                         </div>
                     </CardContent>
                 </Card>

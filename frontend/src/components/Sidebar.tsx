@@ -1,4 +1,3 @@
-import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -21,8 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import axios from "axios";
-import { API_BASE_URL } from "@/config/api.config";
+import { useWhatsApp } from "@/context/WhatsAppContext";
 
 const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -36,30 +34,14 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { status, logout: wsLogout } = useWhatsApp();
   const location = useLocation();
-  const [account, setAccount] = useState<{name: string, phone: string, initials: string} | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const isConnected = status.status === 'connected' || status.status === 'authenticated';
+  const account = status.account;
 
-  useEffect(() => {
-    const fetchAccount = async () => {
-        try {
-            const res = await axios.get(`${API_BASE_URL}/api/auth/status`);
-            if (res.data?.status === 'connected' && res.data?.account) {
-                setIsConnected(true);
-                setAccount(res.data.account);
-            } else {
-                setIsConnected(false);
-                setAccount(null);
-            }
-        } catch (e) {
-            console.error("Failed to fetch WhatsApp account info for sidebar", e);
-        }
-    };
-
-    fetchAccount();
-    const interval = setInterval(fetchAccount, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const initials = account?.name 
+    ? account.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+    : 'WB';
 
   return (
     <>
@@ -89,7 +71,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
           </div>
           
-          {/* Close button for mobile inside sidebar */}
           <Button 
             variant="ghost" 
             size="icon" 
@@ -136,7 +117,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold border",
                 isConnected ? "bg-neutral-800 text-emerald-500 border-emerald-500/20" : "bg-neutral-800 text-neutral-500 border-neutral-700"
             )}>
-              {account ? account.initials : 'WB'}
+              {initials}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-semibold truncate text-white">{account ? account.name : 'WhatsApp Bot'}</p>
@@ -159,9 +140,9 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </AlertDialogTrigger>
             <AlertDialogContent className="border-neutral-900 bg-neutral-950">
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-white">Heads up!</AlertDialogTitle>
+                <AlertDialogTitle className="text-white">Sign Out?</AlertDialogTitle>
                 <AlertDialogDescription className="text-neutral-400">
-                  Are you sure you want to sign out? This will clear your current local session data.
+                  This will log you out of the bot dashboard and disconnect your WhatsApp session if linked.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -170,17 +151,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 </AlertDialogCancel>
                 <AlertDialogAction
                   onClick={async () => {
-                    try {
-                      await axios.post(`${API_BASE_URL}/api/auth/logout`);
-                    } catch (e) {
-                      console.error("Logout API failed", e);
-                    }
+                    await wsLogout();
                     localStorage.clear();
                     window.location.href = "/login";
                   }}
                   className="bg-red-600 hover:bg-red-700 text-white border-0"
                 >
-                  Sign Out
+                  Confirm Sign Out
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>

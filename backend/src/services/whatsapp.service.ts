@@ -1,20 +1,29 @@
+import { Client, LocalAuth } from 'whatsapp-web.js';
 import { IWhatsappService } from './interfaces/IWhatsappService';
-import client from '../config/whatsapp.config';
 import fs from 'fs';
 import path from 'path';
+import { EventEmitter } from 'events';
 
-export class WhatsappService implements IWhatsappService {
+interface SessionData {
+    client: Client;
+    lastQr: string | null;
+    isReady: boolean;
+    isRefreshing: boolean;
+}
+
+export class WhatsappService extends EventEmitter implements IWhatsappService {
     private antiSpamService: any; 
     private aiService: any;       
     private contactRepo: any;     
     private personalityRepo: any; 
     private messageRepo: any;     
+    
+    private sessions: Map<string, SessionData> = new Map();
     private messageBuffers: Map<string, string[]> = new Map();
     private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
-    private latestQr: string | null = null;
-    private isReady: boolean = false;
 
     constructor(antiSpamService: any, aiService: any, contactRepo: any, personalityRepo: any, messageRepo: any) {
+        super();
         this.antiSpamService = antiSpamService;
         this.aiService = aiService;
         this.contactRepo = contactRepo;
@@ -22,282 +31,267 @@ export class WhatsappService implements IWhatsappService {
         this.messageRepo = messageRepo;
     }
 
-    getLatestQr(): string | null {
-        return this.latestQr;
-    }
+    private getChromePath(): string | undefined {
+        // Explicit environment override
+        if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
 
-    getStatus(): string {
-        return this.isReady ? 'connected' : 'disconnected';
-    }
-
-    getAccountInfo(): any {
-        if (!this.isReady || !client.info) return null;
+        const isWin = process.platform === 'win32';
         
-        const pushname = client.info.pushname || 'WhatsApp User';
-        return {
-            name: pushname,
-            phone: client.info.wid?.user || 'Unknown Number',
-            initials: pushname.substring(0, 2).toUpperCase()
-        };
-    }
-
-    async getProfilePicUrl(phone: string): Promise<string | null> {
-        if (!this.isReady) return null;
-        try {
-        
-            const contactId = phone.includes('@') ? phone : `${phone}@c.us`;
-            return await client.getProfilePicUrl(contactId);
-        } catch (e) {
-            return null;
-        }
-    }
-
-    initialize(): void {
-
-        const lockFile = path.join(process.cwd(), '.wwebjs_auth', 'session-ente-bot', 'SingletonLock');
-        if (fs.existsSync(lockFile)) {
-            try {
-                fs.unlinkSync(lockFile);
-                console.log('[WhatsApp] Freed stale session lock.');
-            } catch (err) {
-
-                console.warn('[WhatsApp] Stale lock detected but busy. Attempting to proceed...');
+        // Check Common Windows Installation Paths
+        if (isWin) {
+            const winPaths = [
+                'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+                'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+            ];
+            for (const p of winPaths) {
+                if (fs.existsSync(p)) return p;
             }
         }
 
-        client.on('qr', (qr: any) => {
-            console.log('[WhatsApp] QR RECEIVED');
-            this.latestQr = qr;
+
+        const cacheDir = path.resolve(process.cwd(), '.cache', 'puppeteer', 'chrome');
+        if (fs.existsSync(cacheDir)) {
+            try {
+                const folders = fs.readdirSync(cacheDir);
+                for (const folder of folders) {
+                    const subdirs = ['chrome-linux64', 'chrome-win64', 'chrome-win32', 'chrome-mac'];
+                    for (const sub of subdirs) {
+                        const execName = isWin ? 'chrome.exe' : 'chrome';
+                        const fullPath = path.join(cacheDir, folder, sub, execName);
+                        if (fs.existsSync(fullPath)) return fullPath;
+                    }
+                }
+            } catch (e) {}
+        }
+
+        return undefined;
+    }
+
+    async getOrInitSession(sessionId: string): Promise<SessionData> {
+        let session = this.sessions.get(sessionId);
+        if (!session) {
+            console.log(`[WhatsApp] Initializing new session for: ${sessionId}`);
+            const client = new Client({
+                authStrategy: new LocalAuth({
+                    clientId: sessionId,
+                    dataPath: path.join(process.cwd(), '.wwebjs_auth')
+                }),
+                puppeteer: {
+                    headless: true,
+                    executablePath: this.getChromePath(),
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                },
+                webVersion: '2.3000.1018901614',
+                webVersionCache: {
+                    type: 'remote',
+                    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1018901614.html'
+                }
+            });
+
+            session = {
+                client,
+                lastQr: null,
+                isReady: false,
+                isRefreshing: false
+            };
+            this.sessions.set(sessionId, session);
+            this.setupClientEvents(sessionId, client);
+            client.initialize().catch(err => console.error(`[WhatsApp] Init failed for ${sessionId}:`, err));
+        }
+        return session;
+    }
+
+    private setupClientEvents(sessionId: string, client: Client): void {
+        client.on('qr', (qr: string) => {
+            console.log(`[WhatsApp] QR RECEIVED for session: ${sessionId}`);
+            const session = this.sessions.get(sessionId);
+            if (session) {
+                session.lastQr = qr;
+                this.emit('qr', { sessionId, qr });
+            }
+        });
+
+        client.on('authenticated', () => {
+            console.log(`[WhatsApp] Session ${sessionId} AUTHENTICATED! Ready will follow soon.`);
+            const session = this.sessions.get(sessionId);
+            if (session) {
+                session.lastQr = null;
+                // session.isReady = true; // Wait for 'ready' for full chat sync but authenticated is enough to hide QR
+                this.emit('authenticated', { sessionId });
+            }
+        });
+
+        client.on('auth_failure', (msg) => {
+            console.error(`[WhatsApp] Auth failure for ${sessionId}: ${msg}`);
+            const session = this.sessions.get(sessionId);
+            if (session) {
+                session.lastQr = null;
+                this.emit('auth_failure', { sessionId, msg });
+            }
         });
 
         client.on('ready', async () => {
-            console.log('[WhatsApp] Client is ready!');
-            this.isReady = true;
-            this.latestQr = null; 
-            
-           
-            console.log('[WhatsApp] Syncing existing contacts...');
-            await this.syncContacts();
-        });
-
-        client.on('disconnected', async (reason: any) => {
-            console.log(`[WhatsApp] Client disconnected. Reason: ${reason}`);
-            this.isReady = false;
-            
-            if (reason === 'LOGOUT' || reason === 'logout') {
-                await this.clearUserData();
+            console.log(`[WhatsApp] Client is ready for session: ${sessionId}`);
+            const session = this.sessions.get(sessionId);
+            if (session) {
+                session.isReady = true;
+                session.lastQr = null;
+                this.emit('ready', { sessionId });
+                await this.syncContacts(sessionId);
             }
         });
 
-        client.on('message', async (msg: any) => {
-           
-            if (msg.fromMe) return;
-            if (msg.type !== 'chat') return;
-            if (!msg.body || msg.body.trim() === '') return;
-            
-            const from = msg.from;
-            const body = msg.body;
-            console.log(`[WhatsApp] Message received from ${from}: ${body.substring(0, 20)}...`);
-
-           
-            if (from.endsWith('@g.us')) {
-                return;
+        client.on('disconnected', async (reason) => {
+            console.log(`[WhatsApp] Session ${sessionId} disconnected: ${reason}`);
+            const session = this.sessions.get(sessionId);
+            if (session) {
+                session.isReady = false;
+                this.emit('disconnected', { sessionId, reason });
             }
-
-           
-            const phoneNumber = from.split('@')[0];
-
-            
-            let contact = await this.contactRepo.findByPhone(null, phoneNumber);
-            if (!contact) {
-                const contactName = msg._data?.notifyName || "Unknown";
-                console.log(`[WhatsApp] New contact discovered: ${contactName} (${phoneNumber})`);
-                contact = await this.contactRepo.create({
-                    name: contactName,
-                    phoneNumber: phoneNumber,
-                    botEnabled: false,
-                    dailyMessageCount: 0
-                });
-            }
-
-            const isSafe = await this.antiSpamService.checkAllRules(phoneNumber);
-            if (!isSafe) {
-               
-                await this.contactRepo.update(contact._id.toString(), { lastMessageTime: new Date() });
-                return;
-            }
-
-         
-            let buffer = this.messageBuffers.get(from) || [];
-            buffer.push(body);
-            this.messageBuffers.set(from, buffer);
-
-            const existingTimer = this.debounceTimers.get(from);
-            if (existingTimer) {
-                clearTimeout(existingTimer);
-            }
-
-            const timer = setTimeout(async () => {
-                const pendingBuffer = this.messageBuffers.get(from) || [];
-                if (pendingBuffer.length === 0) return;
-
-                this.messageBuffers.delete(from);
-                this.debounceTimers.delete(from);
-
-                const mergedMessage = pendingBuffer.join('\n');
-                
-                const contact = await this.contactRepo.findByPhone(null, phoneNumber);
-                let systemPrompt = "Pretend you are helpful and casual chat friend. Keep your replies extremely short, strictly 1-3 sentences maximum. Casual conversation style only.";
-
-                if (contact) {
-                    const personality = await this.personalityRepo.findByContactId(contact._id);
-                    if (personality?.systemPrompt) {
-                        systemPrompt = personality.systemPrompt;
-                    }
-                }
-
-               
-                const finalPrompt = this.aiService.buildSystemPrompt(systemPrompt, mergedMessage);
-                
-                console.log(`[AI] Generating reply for ${phoneNumber} with dynamic prompt...`);
-                const reply = await this.aiService.generateReply(finalPrompt, [], mergedMessage);
-
-                await this.antiSpamService.applyHumanDelay();
-
-            
-                await msg.reply(reply);
-
-           
-                await this.antiSpamService.incrementDailyMessageCount(phoneNumber);
-
-            }, 5000);
-
-            this.debounceTimers.set(from, timer);
         });
 
-        client.initialize();
+        client.on('message', (msg) => this.handleIncomingMessage(sessionId, msg));
     }
 
+    private async handleIncomingMessage(sessionId: string, msg: any) {
+        if (msg.fromMe || msg.type !== 'chat' || !msg.body) return;
+        if (msg.from.endsWith('@g.us')) return;
 
-    async syncContacts(): Promise<void> {
-        try {
-            const chats = await client.getChats();
-            console.log(`[WhatsApp] Found ${chats.length} existing chats. Syncing to DB...`);
+        const from = msg.from;
+        const body = msg.body;
+        const phoneNumber = from.split('@')[0];
+
+        // Isolated DB context by adding session/userId filter if we had it, 
+        // but currently we just fetch by phone. We should ideally filter by sessionId/userId too.
+        let contact = await this.contactRepo.findByPhone(null, phoneNumber);
+        if (!contact) {
+            contact = await this.contactRepo.create({
+                name: msg._data?.notifyName || "Unknown",
+                phoneNumber,
+                botEnabled: false,
+                dailyMessageCount: 0
+            });
+        }
+
+        const isSafe = await this.antiSpamService.checkAllRules(phoneNumber);
+        if (!isSafe) {
+            await this.contactRepo.update(contact._id.toString(), { lastMessageTime: new Date() });
+            return;
+        }
+
+        // Buffer logic per user
+        const bufferKey = `${sessionId}:${from}`;
+        let buffer = this.messageBuffers.get(bufferKey) || [];
+        buffer.push(body);
+        this.messageBuffers.set(bufferKey, buffer);
+
+        if (this.debounceTimers.has(bufferKey)) clearTimeout(this.debounceTimers.get(bufferKey));
+
+        const timer = setTimeout(async () => {
+            const pending = this.messageBuffers.get(bufferKey) || [];
+            if (pending.length === 0) return;
+            this.messageBuffers.delete(bufferKey);
+            this.debounceTimers.delete(bufferKey);
+
+            const merged = pending.join('\n');
+            const personality = await this.personalityRepo.findByContactId(contact._id);
+            const systemPrompt = personality?.systemPrompt || "Pretend you are helpful and casual chat friend. Casual conversation style only.";
             
+            const finalPrompt = this.aiService.buildSystemPrompt(systemPrompt, merged);
+            const reply = await this.aiService.generateReply(finalPrompt, [], merged);
+
+            await this.antiSpamService.applyHumanDelay();
+            await msg.reply(reply);
+            await this.antiSpamService.incrementDailyMessageCount(phoneNumber);
+        }, 5000);
+
+        this.debounceTimers.set(bufferKey, timer);
+    }
+
+    async syncContacts(sessionId: string): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session?.isReady) return;
+        try {
+            const chats = await session.client.getChats();
             for (const chat of chats) {
                 if (chat.isGroup) continue;
-                
-                const phoneNumber = chat.id.user;
-                const existing = await this.contactRepo.findByPhone(null, phoneNumber);
-                
+                const phone = chat.id.user;
+                const existing = await this.contactRepo.findByPhone(null, phone);
                 if (!existing) {
                     await this.contactRepo.create({
                         name: chat.name || "Unknown",
-                        phoneNumber: phoneNumber,
+                        phoneNumber: phone,
                         botEnabled: false,
                         dailyMessageCount: 0
                     });
                 }
             }
-            console.log('[WhatsApp] Contact sync completed.');
         } catch (err) {
-            console.error('[WhatsApp] Contact sync failed:', err);
+            console.error(`[WhatsApp] Sync failed for ${sessionId}:`, err);
         }
     }
 
     async sendMessage(to: string, content: string): Promise<void> {
-        await client.sendMessage(to, content);
-    }
-
-    async destroy(): Promise<void> {
-        try {
-            await client.destroy();
-            console.log('[WhatsApp] Client destroyed cleanly.');
-        } catch (err) {
-            console.warn('[WhatsApp] Error during destroy:', err);
+        // Default session or look up? Needs a way to know which session to use.
+        // For simplicity, we'll use the first active session if not specified, 
+        // but this should be refactored to take sessionId.
+        const firstSession = Array.from(this.sessions.values()).find(s => s.isReady);
+        if (firstSession) {
+            await firstSession.client.sendMessage(to, content);
         }
     }
 
-    async clearUserData(): Promise<void> {
-        try {
-            console.log('[WhatsApp] Clearing all user data...');
-            await this.contactRepo.deleteMany({});
-            await this.personalityRepo.deleteMany({});
-            await this.messageRepo.deleteMany({});
-            console.log('[WhatsApp] All user data cleared successfully.');
-        } catch (err) {
-            console.error('[WhatsApp] Error clearing user data:', err);
+    async logout(sessionId: string): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (session) {
+            try {
+                await session.client.logout();
+                session.isReady = false;
+                session.lastQr = null;
+                this.sessions.delete(sessionId);
+            } catch (err) {
+                console.error(`[WhatsApp] Logout error for ${sessionId}:`, err);
+            }
         }
     }
 
-    async logout(): Promise<void> {
+    async refreshQr(sessionId: string): Promise<void> {
+        const session = this.sessions.get(sessionId);
+        if (!session || session.isRefreshing) return;
+        
         try {
-            await client.logout();
-            this.isReady = false;
-            this.latestQr = null;
-            console.log('[WhatsApp] Client logged out successfully.');
-            await this.clearUserData();
+            session.isRefreshing = true;
+            session.isReady = false;
+            session.lastQr = null;
+            await session.client.destroy();
+            this.sessions.delete(sessionId);
+            await this.getOrInitSession(sessionId);
         } catch (err) {
-            console.error('[WhatsApp] Error during logout:', err);
-        }
-    }
-
-    private isRefreshingQr: boolean = false;
-
-    async refreshQr(): Promise<void> {
-        if (this.isRefreshingQr) {
-            console.log('[WhatsApp] Refresh already in progress, ignoring request...');
-            return;
-        }
-
-        try {
-            this.isRefreshingQr = true;
-            console.log('[WhatsApp] Force refreshing QR Code (destroying client)...');
-            this.latestQr = null;
-            this.isReady = false;
-            
-            await client.destroy();
-            console.log('[WhatsApp] Client destroyed. Re-initializing...');
-            
-            // Give the OS a moment to free up RAM before re-launching
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            
-            await client.initialize(); 
-        } catch (err) {
-            console.error('[WhatsApp] Error during QR refresh:', err);
+            console.error(`[WhatsApp] Refresh failed for ${sessionId}:`, err);
         } finally {
-            this.isRefreshingQr = false;
+            if (session) session.isRefreshing = false;
         }
     }
 
-    async getPairingCode(phoneNumber: string): Promise<string> {
-        try {
-         
-            let formattedNumber = phoneNumber.replace(/\D/g, '');
-            
-            
-            if (formattedNumber.length === 10) {
-                formattedNumber = '91' + formattedNumber;
-                console.log(`[WhatsApp] Auto-added 91 prefix: ${formattedNumber}`);
-            }
+    async getPairingCode(sessionId: string, phoneNumber: string): Promise<string> {
+        const session = await this.getOrInitSession(sessionId);
+        const formatted = phoneNumber.replace(/\D/g, '').length === 10 ? '91' + phoneNumber.replace(/\D/g, '') : phoneNumber.replace(/\D/g, '');
+        return await session.client.requestPairingCode(formatted);
+    }
 
-            console.log(`[WhatsApp] Requesting pairing code for ${formattedNumber}...`);
-            
-            
-            if (client.pupPage) {
-                
-                await client.pupPage.exposeFunction('onCodeReceivedEvent', (code: string) => {
-                    return code;
-                }).catch(() => {
-                 
-                });
-            }
+    getSessionStatus(sessionId: string) {
+        const session = this.sessions.get(sessionId);
+        return {
+            status: session?.isReady ? 'connected' : 'disconnected',
+            qr: session?.lastQr,
+            account: session?.isReady && session.client.info ? {
+                name: session.client.info.pushname || 'User',
+                phone: session.client.info.wid?.user || 'Unknown'
+            } : null
+        };
+    }
 
-            const code = await client.requestPairingCode(formattedNumber);
-            return code;
-        } catch (err) {
-            console.error('[WhatsApp] Error requesting pairing code:', err);
-            throw err;
-        }
+    initialize(): void {
+        console.log('[WhatsApp] Multi-session service initialized. Waiting for users to connect...');
     }
 }
