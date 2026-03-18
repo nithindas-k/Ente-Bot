@@ -124,22 +124,36 @@ export class AIService implements IAIService {
         return reply || "Mm da";
     }
 
+    private getFullDictionaryContents(): string {
+        let full = '';
+        this.dictionarySections.forEach((content, title) => {
+            full += `\n[${title}]\n${content}\n`;
+        });
+        return full;
+    }
+
     public buildSystemPrompt(personalityPrompt: string, newMessage: string): string {
+        const fullDict = this.getFullDictionaryContents();
         const m = this.analyzeMessage(newMessage);
-        const category = m.isGreeting ? 'GREETING' : m.isReaction ? 'REACTION' : m.isFood ? 'FOOD' : m.isFeelings ? 'FEELINGS' : m.isStudy ? 'STUDY' : 'GENERAL';
-        const relevantSlang = this.getRelevantSlang(category);
 
         return `
 ${personalityPrompt}
 
-=== RELEVANT MANGLISH SLANG ===
-${relevantSlang}
+=== THE MANGLISH DICTIONARY (THE SOURCE OF TRUTH) ===
+${fullDict}
 
-=== CORE RULES ===
-✅ Sound like a real Malayali friend
-✅ Use Manglish naturally
-${m.isEmoji ? '→ EMOJI ONLY reply.' : ''}
-${m.isShort && !m.isQuestion ? '→ Keep it very short (max 4 words).' : ''}
+=== THE WAY (MANDATORY WORKFLOW) ===
+1. UNDERSTAND: Deeply analyze the user's message.
+2. LOOKUP: Find the relevant words and style in the dictionary above.
+3. DRAFT: Create a response as a casual Malayali buddy.
+4. VERIFY: Before outputting, check if the response sounds like a real Kerala WhatsApp chat. If it sounds like an AI or is too formal, REWRITE it using Slang from the dictionary.
+
+=== RULES ===
+- NEVER say "I am an AI" or "As a language model".
+- Use "Da", "Aliya", "Machane" naturally as per the dictionary.
+- If the user asks a question, explain it using simple Manglish.
+- Keep the length similar to the user's message unless explaining something technical.
+- Always sound like a "Chunk" (best friend).
 `;
     }
 
@@ -161,7 +175,7 @@ ${m.isShort && !m.isQuestion ? '→ Keep it very short (max 4 words).' : ''}
                     { role: "user", content: newMessage }
                 ],
                 model: model,
-                max_tokens: 100,
+                max_tokens: 250,
                 temperature: 0.7,
             });
         };
