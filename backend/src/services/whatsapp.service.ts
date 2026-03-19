@@ -48,9 +48,20 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             for (const p of winPaths) {
                 if (fs.existsSync(p)) return p;
             }
+        } else {
+            // Check Common Linux Production Paths (Railway/Koyeb/Ubuntu)
+            const linuxPaths = [
+                '/usr/bin/google-chrome',
+                '/usr/bin/chromium-browser',
+                '/usr/bin/chromium',
+                '/usr/bin/google-chrome-stable'
+            ];
+            for (const p of linuxPaths) {
+                if (fs.existsSync(p)) return p;
+            }
         }
 
-
+        // Fallback to Puppeteer local cache
         const cacheDir = path.resolve(process.cwd(), '.cache', 'puppeteer', 'chrome');
         if (fs.existsSync(cacheDir)) {
             try {
@@ -81,7 +92,16 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 puppeteer: {
                     headless: true,
                     executablePath: this.getChromePath(),
-                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                    args: [
+                        '--no-sandbox', 
+                        '--disable-setuid-sandbox', 
+                        '--disable-dev-shm-usage',
+                        '--disable-accelerated-2d-canvas',
+                        '--no-first-run',
+                        '--no-zygote',
+                        '--single-process', // RAM saving for Railway/Render
+                        '--disable-gpu'
+                    ],
                     protocolTimeout: 0
                 },
                 webVersion: '2.3000.1018901614',
@@ -298,6 +318,19 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             } catch (err) {
                 console.error(`[WhatsApp] Logout error for ${sessionId}:`, err);
             }
+        }
+        
+        // As requested: clear all data related to the user on logout
+        console.log(`[WhatsApp] Wiping user data (contacts, personalities, messages) for session: ${sessionId}`);
+        try {
+            await Promise.all([
+                this.contactRepo.deleteMany({}),
+                this.personalityRepo.deleteMany({}),
+                this.messageRepo.deleteMany({})
+            ]);
+            console.log(`[WhatsApp] Data wipe successful for session: ${sessionId}`);
+        } catch (err) {
+            console.error(`[WhatsApp] Failed to wipe user data for session: ${sessionId}:`, err);
         }
     }
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Settings, ShieldCheck, ShieldAlert, Search, Users, Filter, Bot } from "lucide-react";
+import { RefreshCw, Settings, ShieldCheck, ShieldAlert, Search, Users, Filter, Bot, Loader2, UserPlus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { API_BASE_URL } from "@/config/api.config";
@@ -23,7 +23,7 @@ function ContactCard({ contact, onToggle, onClickSettings }: { contact: Contact,
     useEffect(() => {
         axios.get(`${API_BASE_URL}/api/contacts/dp/${contact.phoneNumber}`)
             .then(res => setDp(res.data.url))
-            .catch(() => {});
+            .catch(() => { });
     }, [contact.phoneNumber]);
 
     const initials = (contact.name || "U").substring(0, 2).toUpperCase();
@@ -57,26 +57,25 @@ function ContactCard({ contact, onToggle, onClickSettings }: { contact: Contact,
             </div>
 
             <div className="flex items-center justify-between mt-auto">
-                <button 
+                <button
                     onClick={onToggle}
-                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all active:scale-90 ${
-                        contact.botEnabled 
-                        ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20' 
-                        : 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700'
-                    }`}
+                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest font-bold transition-all active:scale-90 ${contact.botEnabled
+                            ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/20'
+                            : 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700'
+                        }`}
                 >
                     {contact.botEnabled ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
                     <span>{contact.botEnabled ? 'Active' : 'Ignored'}</span>
                 </button>
                 <div className="flex items-center gap-2">
-                     {contact.personalityId && (
-                         <div className="w-7 h-7 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center p-0" title="Custom Personality Assigned">
-                             <Bot className="w-3.5 h-3.5 text-blue-500" />
-                         </div>
-                     )}
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
+                    {contact.personalityId && (
+                        <div className="w-7 h-7 bg-blue-500/10 border border-blue-500/20 rounded-full flex items-center justify-center p-0" title="Custom Personality Assigned">
+                            <Bot className="w-3.5 h-3.5 text-blue-500" />
+                        </div>
+                    )}
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         className="text-neutral-400 hover:text-white h-8 w-8 p-0 rounded-full bg-neutral-800/50 transition-all active:scale-90"
                         onClick={onClickSettings}
                     >
@@ -97,6 +96,22 @@ export default function ContactsPage() {
     const [filterStatus, setFilterStatus] = useState<"all" | "whitelisted" | "ignored">("all");
     const [filterPersonality, setFilterPersonality] = useState<"all" | "custom" | "default">("all");
     const [showFilters, setShowFilters] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleResync = async () => {
+        setIsSyncing(true);
+        const sid = localStorage.getItem('ente_bot_session_id') || 'default';
+        try {
+            await axios.post(`${API_BASE_URL}/api/contacts/sync`, { sessionId: sid });
+            setTimeout(() => {
+                fetchContacts();
+                setIsSyncing(false);
+            }, 3000);
+        } catch (error) {
+            console.error("Sync failed", error);
+            setIsSyncing(false);
+        }
+    };
 
     const fetchContacts = async () => {
         try {
@@ -115,14 +130,14 @@ export default function ContactsPage() {
 
     useGSAP(() => {
         if (!loading && contacts.length > 0) {
-            gsap.fromTo(".contact-card", 
+            gsap.fromTo(".contact-card",
                 { opacity: 0, scale: 0.9, y: 20 },
-                { 
-                    opacity: 1, 
-                    scale: 1, 
-                    y: 0, 
-                    stagger: 0.05, 
-                    duration: 0.5, 
+                {
+                    opacity: 1,
+                    scale: 1,
+                    y: 0,
+                    stagger: 0.05,
+                    duration: 0.5,
                     ease: "back.out(1.5)",
                     clearProps: "all"
                 }
@@ -143,9 +158,9 @@ export default function ContactsPage() {
         const name = (contact.name || "").toLowerCase();
         const phone = (contact.phoneNumber || "").toLowerCase();
         const search = searchTerm.toLowerCase();
-        
+
         const matchesSearch = name.includes(search) || phone.includes(search);
-        
+
         let matchesStatus = true;
         if (filterStatus === "whitelisted") matchesStatus = contact.botEnabled === true;
         if (filterStatus === "ignored") matchesStatus = contact.botEnabled === false;
@@ -169,10 +184,25 @@ export default function ContactsPage() {
                         Control where your AI assistant responds. Only whitelisted numbers will get automatic replies.
                     </p>
                 </div>
-                <Button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 h-auto text-xs font-bold rounded-xl flex items-center space-x-1.5 border-0 transition-all active:scale-95 shadow-lg shadow-emerald-500/10">
-                    <UserPlus className="w-4 h-4 mr-0.5" />
-                    <span>Add Contact</span>
-                </Button>
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        onClick={handleResync}
+                        disabled={isSyncing}
+                        className="h-10 px-4 rounded-xl border-neutral-800 bg-neutral-900/50 hover:bg-neutral-800 text-white font-bold text-xs transition-all active:scale-95 group"
+                    >
+                        {isSyncing ? (
+                            <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                            <RefreshCw className="w-3.5 h-3.5 mr-1.5 group-hover:rotate-180 transition-transform duration-500" />
+                        )}
+                        {isSyncing ? "Syncing..." : "Re-sync Contacts"}
+                    </Button>
+                    <Button className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2.5 h-auto text-xs font-bold rounded-xl flex items-center space-x-1.5 border-0 transition-all active:scale-95 shadow-lg shadow-emerald-500/10">
+                        <UserPlus className="w-4 h-4 mr-0.5" />
+                        <span>Add Contact</span>
+                    </Button>
+                </div>
             </div>
 
             <div className="flex flex-col space-y-4">
@@ -180,8 +210,8 @@ export default function ContactsPage() {
                     <div className="flex-1 flex items-center gap-3 w-full md:max-w-xl">
                         <div className="relative flex-1 group">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500 group-focus-within:text-emerald-500 transition-colors" />
-                            <Input 
-                                placeholder="Search contacts by name or number..." 
+                            <Input
+                                placeholder="Search contacts by name or number..."
                                 className="pl-10 h-11 bg-neutral-900/50 border-neutral-800 hover:border-neutral-700 transition-all font-sans w-full rounded-xl"
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -216,11 +246,10 @@ export default function ContactsPage() {
                                     <button
                                         key={status}
                                         onClick={() => setFilterStatus(status as any)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize border active:scale-95 ${
-                                            filterStatus === status 
-                                                ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-900/20' 
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize border active:scale-95 ${filterStatus === status
+                                                ? 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-900/20'
                                                 : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-white'
-                                        }`}
+                                            }`}
                                     >
                                         {status}
                                     </button>
@@ -241,22 +270,21 @@ export default function ContactsPage() {
                                     <button
                                         key={p.id}
                                         onClick={() => setFilterPersonality(p.id as any)}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border active:scale-95 ${
-                                            filterPersonality === p.id 
-                                                ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/20' 
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border active:scale-95 ${filterPersonality === p.id
+                                                ? 'bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/20'
                                                 : 'bg-neutral-800/50 border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-white'
-                                        }`}
+                                            }`}
                                     >
                                         {p.label}
                                     </button>
                                 ))}
                             </div>
                         </div>
-                        
+
                         {(filterStatus !== 'all' || filterPersonality !== 'all' || searchTerm) && (
                             <div className="ml-auto flex items-end">
-                                <Button 
-                                    variant="ghost" 
+                                <Button
+                                    variant="ghost"
                                     size="sm"
                                     onClick={() => {
                                         setFilterStatus('all');
@@ -293,10 +321,10 @@ export default function ContactsPage() {
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {filteredContacts.map(contact => (
-                            <ContactCard 
-                                key={contact._id} 
-                                contact={contact} 
-                                onToggle={() => toggleWhitelist(contact._id)} 
+                            <ContactCard
+                                key={contact._id}
+                                contact={contact}
+                                onToggle={() => toggleWhitelist(contact._id)}
                                 onClickSettings={() => navigate(`/personality/${contact._id}`)}
                             />
                         ))}

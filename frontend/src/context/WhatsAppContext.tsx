@@ -69,7 +69,7 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
         init();
 
         const socketUrl = API_BASE_URL.replace('/api', '');
-        const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+        const socket = io(socketUrl, { transports: ['websocket'] });
         socketRef.current = socket;
 
         socket.on('connect', () => {
@@ -119,11 +119,13 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        if (!confirm("Logout from WhatsApp?")) return;
+        if (!confirm("Logout from WhatsApp? This will permanently clear all your contacts and trained personality data from this session.")) return;
         try {
             await axios.post(`${API_BASE_URL}/api/auth/whatsapp/logout`, { sessionId });
             setSyncLogs([]);
             setSyncProgress(0);
+            localStorage.removeItem('ente_bot_session_id');
+            window.location.href = '/';
         } catch (e) {
             console.error("Logout failed", e);
         }

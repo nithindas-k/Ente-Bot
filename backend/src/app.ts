@@ -154,6 +154,17 @@ connectDB().then(async () => {
         }
     });
 
+    app.post('/api/contacts/sync', async (req, res) => {
+        const { sessionId = 'default' } = req.body;
+        try {
+     
+            whatsappService.syncContacts(sessionId);
+            res.json({ success: true, message: "Contact synchronization started." });
+        } catch (err) {
+            res.status(500).json({ error: "Failed to start sync." });
+        }
+    });
+
     app.use('/api/dashboard', createDashboardRouter(whatsappService));
     app.use('/api/personalities', createPersonalityRouter(aiService));
 
