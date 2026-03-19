@@ -100,7 +100,10 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                         '--no-first-run',
                         '--no-zygote',
                         '--single-process', // RAM saving for Railway/Render
-                        '--disable-gpu'
+                        '--disable-gpu',
+                        '--disable-extensions',
+                        '--disable-component-update',
+                        '--js-flags="--max-old-space-size=400"'
                     ],
                     protocolTimeout: 0
                 },
@@ -263,40 +266,54 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         try {
             this.emit('sync-update', { sessionId, message: 'Starting contact synchronization...', progress: 0 });
             
-            // To prevent OOM (Out of Memory) on low RAM servers like Render/Railway,
-            // we catch protocol crashes specifically during getChats().
-            let chats: any[] = [];
+            // getContacts() is significantly lighter and less prone to crashing than getChats()
+            // when there are many conversations.
+            let results: any[] = [];
             try {
-                chats = await session.client.getChats();
-            } catch (pErr) {
-                console.warn(`[WhatsApp] Full chat sync failed (likely OOM). Falling back to basic contact sync...`, pErr);
-                // Fallback: Just sync active contacts if chats fail
-                chats = []; 
+                results = await session.client.getContacts();
+                console.log(`[WhatsApp] Fetched ${results.length} contacts via getContacts()`);
+            } catch (cErr) {
+                console.warn(`[WhatsApp] Contacts sync failed, trying getChats() fallback...`);
+                try {
+                    results = await session.client.getChats();
+                } catch (pErr) {
+                    console.error(`[WhatsApp] Major OOM during sync. Bot is still connected but list skipped.`);
+                    results = [];
+                }
             }
 
-            const total = chats.filter(c => !c.isGroup).length;
+            const total = results.filter(r => !r.isGroup && (r.isUser || r.id?.user)).length;
             if (total === 0) {
-                this.emit('sync-update', { sessionId, message: 'Sync complete (contacts will be added as they message you).', progress: 100 });
+                this.emit('sync-update', { sessionId, message: 'Sync complete (Add contacts by messaging them).', progress: 100 });
                 return;
             }
 
             this.emit('sync-update', { sessionId, message: `Found ${total} contacts. Syncing...`, progress: 10 });
 
             let current = 0;
-            for (const chat of chats) {
-                if (chat.isGroup) continue;
-                const phone = chat.id.user;
-                const existing = await this.contactRepo.findByPhone(null, phone);
-                if (!existing) {
-                    await this.contactRepo.create({
-                        name: chat.name || "Unknown",
-                        phoneNumber: phone,
-                        botEnabled: false,
-                        dailyMessageCount: 0
-                    });
+            for (const item of results) {
+                if (item.isGroup) continue;
+                const phone = item.id?.user || item.id?._serialized?.split('@')[0];
+                if (!phone) continue;
+
+                try {
+                    const existing = await this.contactRepo.findByPhone(null, phone);
+                    if (!existing) {
+                        await this.contactRepo.create({
+                            name: item.name || item.pushname || "Unknown",
+                            phoneNumber: phone,
+                            botEnabled: false,
+                            dailyMessageCount: 0
+                        });
+                        // Small pause every 10 contacts to allow Event Loop to breathe
+                        if (current % 10 === 0) await new Promise(resolve => setTimeout(resolve, 50));
+                    }
+                } catch (dbErr) {
+                    console.error("DB error during sync:", dbErr);
                 }
+
                 current++;
-                if (current % 10 === 0 || current === total) {
+                if (current % 20 === 0 || current === total) {
                     const progress = 10 + Math.floor((current / total) * 90);
                     this.emit('sync-update', { 
                         sessionId, 
