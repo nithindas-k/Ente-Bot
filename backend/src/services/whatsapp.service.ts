@@ -199,10 +199,9 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         const body = msg.body;
         const phoneNumber = from.split('@')[0];
 
-        // Isolated DB context by adding session/userId filter if we had it, 
-        // but currently we just fetch by phone. We should ideally filter by sessionId/userId too.
         let contact = await this.contactRepo.findByPhone(null, phoneNumber);
         if (!contact) {
+            // Create a minimal contact record for unknown senders (botEnabled = false by default)
             contact = await this.contactRepo.create({
                 name: msg._data?.notifyName || "Unknown",
                 phoneNumber,
@@ -211,13 +210,16 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             });
         }
 
+        // Only reply if this contact is whitelisted
+        if (!contact.botEnabled) return;
+
         const isSafe = await this.antiSpamService.checkAllRules(phoneNumber);
         if (!isSafe) {
             await this.contactRepo.update(contact._id.toString(), { lastMessageTime: new Date() });
             return;
         }
 
-        // Buffer logic per user
+        // Buffer multiple rapid messages together (debounce 5 seconds)
         const bufferKey = `${sessionId}:${from}`;
         let buffer = this.messageBuffers.get(bufferKey) || [];
         buffer.push(body);
@@ -232,19 +234,65 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             this.debounceTimers.delete(bufferKey);
 
             const merged = pending.join('\n');
-            const personality = await this.personalityRepo.findByContactId(contact._id);
-            const systemPrompt = personality?.systemPrompt || "Pretend you are helpful and casual chat friend. Casual conversation style only.";
-            
-            const finalPrompt = this.aiService.buildSystemPrompt(systemPrompt, merged);
-            const reply = await this.aiService.generateReply(finalPrompt, [], merged);
 
-            await this.antiSpamService.applyHumanDelay();
+            // ── Step 1: Load conversation history ───────────────────────────
+            let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+            try {
+                const pastMessages = await this.messageRepo.getLastTen(contact._id);
+                // getLastTen returns newest first, so reverse for chronological order
+                history = pastMessages.reverse().map((m: { role: string; content: string }) => ({
+                    role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+                    content: m.content
+                }));
+            } catch (histErr) {
+                console.warn('[AI] Could not load message history:', histErr);
+            }
+
+            // ── Step 2: Save incoming message to DB ─────────────────────────
+            try {
+                await this.messageRepo.create({
+                    contactId: contact._id,
+                    userId: contact._id, // placeholder since we have single-user setup
+                    role: 'user',
+                    content: merged,
+                });
+            } catch (saveErr) {
+                console.warn('[AI] Could not save incoming message:', saveErr);
+            }
+
+            // ── Step 3: Build prompt & generate reply ────────────────────────
+            const personality = await this.personalityRepo.findByContactId(contact._id);
+            const basePrompt = personality?.systemPrompt ||
+                "You are a casual Malayali best friend texting on WhatsApp. Keep replies short and natural.";
+
+            const systemPrompt = this.aiService.buildSystemPrompt(basePrompt, merged);
+            const reply = await this.aiService.generateReply(systemPrompt, history, merged);
+
+            // ── Step 4: Typing simulation delay ─────────────────────────────
+            const typingDelay = this.aiService.getTypingDelayMs(reply);
+            await new Promise(resolve => setTimeout(resolve, typingDelay));
+
+            // ── Step 5: Send reply ───────────────────────────────────────────
             await msg.reply(reply);
+
+            // ── Step 6: Save bot reply to DB ─────────────────────────────────
+            try {
+                await this.messageRepo.create({
+                    contactId: contact._id,
+                    userId: contact._id,
+                    role: 'bot',
+                    content: reply,
+                });
+            } catch (saveErr) {
+                console.warn('[AI] Could not save bot reply:', saveErr);
+            }
+
             await this.antiSpamService.incrementDailyMessageCount(phoneNumber);
         }, 5000);
 
         this.debounceTimers.set(bufferKey, timer);
     }
+
 
     private dpCache = new Map<string, { url: string | null, timestamp: number }>();
 
@@ -319,20 +367,16 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 if (r.isGroup) return false;
                 if (!r.id?.user && !r.id?._serialized) return false;
 
-                // Skip WhatsApp LID entries (internal device IDs, not real phone numbers)
-                // These look like: 253811176263868@lid
                 const serialized: string = r.id?._serialized || '';
                 if (serialized.endsWith('@lid')) return false;
 
                 const name: string = (r.name || r.pushname || '').trim();
                 if (!name) return false;
 
-                // If the "name" looks exactly like a phone number, skip it (unsaved contact)
                 const phone = r.id?.user || '';
                 const nameIsPhone = /^\+?\d[\d\s\-().]{6,}$/.test(name) || name === phone;
                 if (nameIsPhone) return false;
 
-                // Deduplicate — same phone number appearing twice
                 if (seenPhones.has(phone)) return false;
                 seenPhones.add(phone);
 
@@ -342,7 +386,6 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             console.log(`[WhatsApp] Saved (named) contacts after filter: ${savedContacts.length} / ${results.length}`);
             this.emit('sync-update', { sessionId, message: `Found ${savedContacts.length} saved contacts. Wiping old data...`, progress: 5 });
 
-            // Step 3: Wipe the old contact list from DB so stale entries are removed
             try {
                 await this.contactRepo.deleteMany({});
                 console.log(`[WhatsApp] Old contacts wiped. Rebuilding from scratch...`);
