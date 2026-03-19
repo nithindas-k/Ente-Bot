@@ -16,7 +16,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'logo.png'],
       manifest: {
         name: 'Ente Bot',
         short_name: 'EnteBot',
@@ -26,9 +26,9 @@ export default defineConfig({
         display: 'standalone',
         icons: [
           {
-            src: 'favicon.svg',
-            sizes: '192x192 512x512',
-            type: 'image/svg+xml',
+            src: 'logo.png',
+            sizes: '1024x1024',
+            type: 'image/png',
             purpose: 'any maskable'
           }
         ]
