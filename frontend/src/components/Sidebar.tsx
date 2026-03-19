@@ -1,11 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
   Settings,
   LogOut,
   X,
-  Sparkles
+  Sparkles,
+  DownloadCloud
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,6 +40,29 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
   const isConnected = status.status === 'connected' || status.status === 'authenticated';
   const account = status.account;
+
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const initials = account?.name 
     ? account.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
@@ -127,6 +152,17 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             </div>
             <div className={cn("w-1.5 h-1.5 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-neutral-600")} />
           </div>
+
+          {deferredPrompt && (
+            <Button
+              onClick={handleInstallApp}
+              variant="outline"
+              className="w-full justify-start border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 rounded-lg group transition-all h-9 px-3"
+            >
+              <DownloadCloud className="w-4 h-4 mr-2.5 group-hover:-translate-y-0.5 transition-transform" />
+              <span className="font-semibold text-[13px]">Install App</span>
+            </Button>
+          )}
 
           <AlertDialog>
             <AlertDialogTrigger asChild>
