@@ -98,14 +98,12 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                         '--disable-dev-shm-usage',
                         '--disable-accelerated-2d-canvas',
                         '--no-first-run',
-                        '--no-zygote',
-                        '--single-process', // RAM saving for Railway/Render
                         '--disable-gpu',
                         '--disable-extensions',
                         '--disable-component-update',
-                        '--js-flags="--max-old-space-size=400"'
+                        '--window-size=1280,720',
                     ],
-                    protocolTimeout: 0
+                    protocolTimeout: 60000
                 },
                 webVersion: '2.3000.1018901614',
                 webVersionCache: {
@@ -234,6 +232,8 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             this.debounceTimers.delete(bufferKey);
 
             const merged = pending.join('\n');
+            const snippet = merged.length > 30 ? merged.substring(0, 30) + '...' : merged;
+            this.emit('sync-update', { sessionId, message: `Message from ${contact.name}: "${snippet}"`, progress: 0 });
 
             // ── Step 1: Load conversation history ───────────────────────────
             let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
@@ -261,6 +261,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             }
 
             // ── Step 3: Build prompt & generate reply ────────────────────────
+            this.emit('sync-update', { sessionId, message: `AI is thinking a reply for ${contact.name}...`, progress: 0 });
             const personality = await this.personalityRepo.findByContactId(contact._id);
             const basePrompt = personality?.systemPrompt ||
                 "You are a casual Malayali best friend texting on WhatsApp. Keep replies short and natural.";
@@ -274,6 +275,8 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
 
             // ── Step 5: Send reply ───────────────────────────────────────────
             await msg.reply(reply);
+            const replySnippet = reply.length > 30 ? reply.substring(0, 30) + '...' : reply;
+            this.emit('sync-update', { sessionId, message: `Bot replied to ${contact.name}: "${replySnippet}"`, progress: 100 });
 
             // ── Step 6: Save bot reply to DB ─────────────────────────────────
             try {
