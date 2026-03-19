@@ -278,6 +278,19 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         return null;
     }
 
+    // Returns the first session that is already connected/ready
+    getActiveSession(): { sessionId: string; status: string } | null {
+        for (const [sessionId, session] of this.sessions.entries()) {
+            if (session.isReady) {
+                return { sessionId, status: 'connected' };
+            }
+            if (session.isAuthenticated) {
+                return { sessionId, status: 'authenticated' };
+            }
+        }
+        return null;
+    }
+
     async syncContacts(sessionId: string): Promise<void> {
         const session = this.sessions.get(sessionId);
         if (!session?.isReady) return;

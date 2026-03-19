@@ -36,7 +36,8 @@ const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined
 import { toast } from 'sonner';
 
 export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
-    const [sessionId] = useState(() => {
+    const [sessionId, setSessionId] = useState<string>(() => {
+
         const saved = localStorage.getItem('ente_bot_session_id');
         if (saved) return saved;
         const newId = 'session_' + Math.random().toString(36).substring(2, 11);
@@ -55,14 +56,25 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
     const socketRef = useRef<Socket | null>(null);
 
     useEffect(() => {
-        // Initial status fetch and trigger init
         const init = async () => {
+            let activeSessionId = sessionId;
             try {
-                const res = await axios.get(`${API_BASE_URL}/api/auth/status?sessionId=${sessionId}`);
+                const activeRes = await axios.get(`${API_BASE_URL}/api/auth/active-session`);
+                if (activeRes.data?.sessionId && activeRes.data.sessionId !== sessionId) {
+                    console.log(`[Session] Reusing active backend session: ${activeRes.data.sessionId}`);
+                    activeSessionId = activeRes.data.sessionId;
+                    localStorage.setItem('ente_bot_session_id', activeSessionId);
+                    setSessionId(activeSessionId);
+                }
+            } catch (e) {
+                // ignore, proceed with local sessionId
+            }
+
+            try {
+                const res = await axios.get(`${API_BASE_URL}/api/auth/status?sessionId=${activeSessionId}`);
                 setStatus(res.data);
-                // Also trigger QR generation if disconnected
                 if (res.data.status === 'disconnected') {
-                    await axios.get(`${API_BASE_URL}/api/auth/qr?sessionId=${sessionId}`);
+                    await axios.get(`${API_BASE_URL}/api/auth/qr?sessionId=${activeSessionId}`);
                 }
             } catch (e) {
                 toast.error("Failed to connect to WhatsApp service.");

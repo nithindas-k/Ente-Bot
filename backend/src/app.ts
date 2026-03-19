@@ -124,6 +124,16 @@ connectDB().then(async () => {
         res.json({ qr: session.lastQr });
     });
 
+    // ── NEW: Returns the first already-connected/ready session ──────
+    app.get('/api/auth/active-session', (req, res) => {
+        const activeSession = whatsappService.getActiveSession();
+        if (activeSession) {
+            res.json({ sessionId: activeSession.sessionId, status: activeSession.status });
+        } else {
+            res.json({ sessionId: null });
+        }
+    });
+
     app.get('/api/auth/status', (req, res) => {
         const sessionId = (req.query.sessionId as string) || 'default';
         res.json(whatsappService.getSessionStatus(sessionId));
