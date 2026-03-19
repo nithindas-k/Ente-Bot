@@ -246,14 +246,32 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         this.debounceTimers.set(bufferKey, timer);
     }
 
+    private dpCache = new Map<string, { url: string | null, timestamp: number }>();
+
     async getProfilePicUrl(phone: string): Promise<string | null> {
-        const firstSession = Array.from(this.sessions.values()).find(s => s.isReady);
+        const now = Date.now();
+        const cached = this.dpCache.get(phone);
+        if (cached && (now - cached.timestamp < 3600000)) { // 1 hour cache
+            return cached.url;
+        }
+
+        const firstSession = Array.from(this.sessions.values()).find(s => s.isReady && s.client);
         if (firstSession) {
             try {
                 const formatted = phone.includes('@') ? phone : `${phone}@c.us`;
-                return await firstSession.client.getProfilePicUrl(formatted);
+                // Check if page is still alive before calling
+                if (firstSession.client.pupPage?.isClosed()) {
+                   return null;
+                }
+                const url = await firstSession.client.getProfilePicUrl(formatted);
+                this.dpCache.set(phone, { url, timestamp: now });
+                return url;
             } catch (err) {
-                console.error(`[WhatsApp] Failed to fetch DP for ${phone}:`, err);
+                // If it's a detached frame error, don't flood the logs too much
+                const msg = (err as Error).message;
+                if (!msg.includes('detached Frame')) {
+                    console.error(`[WhatsApp] Failed to fetch DP for ${phone}:`, msg);
+                }
                 return null;
             }
         }

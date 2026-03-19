@@ -127,18 +127,29 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        if (!confirm("Logout from WhatsApp? This will permanently clear all your contacts and trained personality data from this session.")) return;
-        try {
-            await axios.post(`${API_BASE_URL}/api/auth/whatsapp/logout`, { sessionId });
-            setSyncLogs([]);
-            setSyncProgress(0);
-            localStorage.removeItem('ente_bot_session_id');
-            toast.success("Logged out successfully");
-            window.location.href = '/';
-        } catch (e) {
-            toast.error("Logout failed.");
-            console.error("Logout failed", e);
-        }
+        toast.warning("Logout from WhatsApp?", {
+            description: "This will permanently clear all your contacts and trained AI personality data.",
+            action: {
+                label: "Confirm Logout",
+                onClick: async () => {
+                    try {
+                        await axios.post(`${API_BASE_URL}/api/auth/whatsapp/logout`, { sessionId });
+                        setSyncLogs([]);
+                        setSyncProgress(0);
+                        localStorage.removeItem('ente_bot_session_id');
+                        toast.success("Logged out successfully");
+                        window.location.href = '/';
+                    } catch (e) {
+                        toast.error("Logout failed.");
+                        console.error("Logout failed", e);
+                    }
+                }
+            },
+            cancel: {
+                label: "Cancel",
+                onClick: () => {}
+            }
+        });
     };
 
     const clearLogs = () => setSyncLogs([]);

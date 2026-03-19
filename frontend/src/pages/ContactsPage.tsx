@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { toast } from 'sonner';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,7 @@ export default function ContactsPage() {
     const [filterPersonality, setFilterPersonality] = useState<"all" | "custom" | "default">("all");
     const [showFilters, setShowFilters] = useState(false);
     const [isSyncing, setIsSyncing] = useState(false);
+    const [displayCount, setDisplayCount] = useState(30);
 
     const handleResync = async () => {
         setIsSyncing(true);
@@ -109,7 +110,7 @@ export default function ContactsPage() {
                 fetchContacts();
                 setIsSyncing(false);
                 toast.success("Contacts updated!");
-            }, 3000);
+            }, 5000);
         } catch (error) {
             console.error("Sync failed", error);
             setIsSyncing(false);
@@ -120,7 +121,7 @@ export default function ContactsPage() {
     const fetchContacts = async () => {
         try {
             const response = await axios.get(`${API_BASE_URL}/api/contacts`);
-            setContacts(response.data.contacts);
+            setContacts(response.data.contacts || []);
         } catch (error) {
             console.error("Error fetching contacts:", error);
         } finally {
@@ -132,49 +133,38 @@ export default function ContactsPage() {
         fetchContacts();
     }, []);
 
-    useGSAP(() => {
-        if (!loading && contacts.length > 0) {
-            gsap.fromTo(".contact-card",
-                { opacity: 0, scale: 0.9, y: 20 },
-                {
-                    opacity: 1,
-                    scale: 1,
-                    y: 0,
-                    stagger: 0.05,
-                    duration: 0.5,
-                    ease: "back.out(1.5)",
-                    clearProps: "all"
-                }
-            );
-        }
-    }, [loading, searchTerm, filterStatus, filterPersonality]);
+    const filteredContacts = useMemo(() => {
+        return contacts.filter((contact) => {
+            const name = (contact.name || "").toLowerCase();
+            const phone = (contact.phoneNumber || "").toLowerCase();
+            const search = searchTerm.toLowerCase();
+
+            const matchesSearch = name.includes(search) || phone.includes(search);
+
+            let matchesStatus = true;
+            if (filterStatus === "whitelisted") matchesStatus = contact.botEnabled === true;
+            if (filterStatus === "ignored") matchesStatus = contact.botEnabled === false;
+
+            let matchesPersonality = true;
+            if (filterPersonality === "custom") matchesPersonality = !!contact.personalityId;
+            if (filterPersonality === "default") matchesPersonality = !contact.personalityId;
+
+            return matchesSearch && matchesStatus && matchesPersonality;
+        });
+    }, [contacts, searchTerm, filterStatus, filterPersonality]);
+
+    const displayedContacts = filteredContacts.slice(0, displayCount);
+    const hasMore = displayCount < filteredContacts.length;
 
     const toggleWhitelist = async (id: string) => {
         try {
             await axios.post(`${API_BASE_URL}/api/contacts/${id}/toggle`);
-            fetchContacts(); // Refresh
+            setContacts(prev => prev.map(c => c._id === id ? { ...c, botEnabled: !c.botEnabled } : c));
         } catch (error) {
             console.error("Error toggling status:", error);
+            toast.error("Failed to update status.");
         }
     };
-
-    const filteredContacts = contacts.filter((contact) => {
-        const name = (contact.name || "").toLowerCase();
-        const phone = (contact.phoneNumber || "").toLowerCase();
-        const search = searchTerm.toLowerCase();
-
-        const matchesSearch = name.includes(search) || phone.includes(search);
-
-        let matchesStatus = true;
-        if (filterStatus === "whitelisted") matchesStatus = contact.botEnabled === true;
-        if (filterStatus === "ignored") matchesStatus = contact.botEnabled === false;
-
-        let matchesPersonality = true;
-        if (filterPersonality === "custom") matchesPersonality = !!contact.personalityId;
-        if (filterPersonality === "default") matchesPersonality = !contact.personalityId;
-
-        return matchesSearch && matchesStatus && matchesPersonality;
-    });
 
     return (
         <div ref={container} className="space-y-6">
@@ -238,7 +228,6 @@ export default function ContactsPage() {
                     </div>
                 </div>
 
-                {/* Advanced Filters Panel */}
                 {showFilters && (
                     <div className="bg-neutral-900 border border-neutral-800 rounded-2xl p-4 flex flex-col sm:flex-row gap-6 animate-in slide-in-from-top-2 fade-in duration-300">
                         <div className="space-y-3">
@@ -305,26 +294,25 @@ export default function ContactsPage() {
                 )}
             </div>
 
-            <div className="w-full">
-                {loading ? (
-                    <div className="text-center py-12 text-neutral-500 w-full col-span-full">Loading contacts...</div>
-                ) : filteredContacts.length === 0 ? (
-                    <div className="text-center py-20 bg-neutral-900/50 border border-neutral-800 border-dashed rounded-3xl col-span-full">
-                        {searchTerm ? (
-                            <div className="space-y-2">
-                                <div className="text-lg font-medium text-neutral-400">No matching contacts</div>
-                                <div className="text-sm text-neutral-500">Try adjusting your filters or search term.</div>
-                            </div>
-                        ) : (
-                            <div className="space-y-2">
-                                <div className="text-lg font-medium text-neutral-400">No contacts found</div>
-                                <div className="text-sm text-neutral-500">Wait for messages to arrive or manually add someone!</div>
-                            </div>
-                        )}
+            {loading ? (
+                <div className="flex flex-col items-center justify-center py-20 animate-pulse">
+                    <Loader2 className="w-10 h-10 text-emerald-500 animate-spin mb-4" />
+                    <p className="text-neutral-500 font-medium">Loading your contacts brain...</p>
+                </div>
+            ) : filteredContacts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                    <div className="w-16 h-16 bg-neutral-900 border border-neutral-800 rounded-3xl flex items-center justify-center">
+                        <Users className="w-8 h-8 text-neutral-500" />
                     </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {filteredContacts.map(contact => (
+                    <div className="space-y-1">
+                        <p className="text-white font-bold">No contacts found</p>
+                        <p className="text-neutral-500 text-xs">Try adjusting your filters or search term.</p>
+                    </div>
+                </div>
+            ) : (
+                <div className="space-y-8 pb-20">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {displayedContacts.map((contact) => (
                             <ContactCard
                                 key={contact._id}
                                 contact={contact}
@@ -333,8 +321,19 @@ export default function ContactsPage() {
                             />
                         ))}
                     </div>
-                )}
-            </div>
+
+                    {hasMore && (
+                        <div className="flex justify-center pt-4">
+                            <Button
+                                onClick={() => setDisplayCount(prev => prev + 30)}
+                                className="bg-neutral-800 hover:bg-neutral-700 text-white font-bold h-11 px-8 rounded-xl border border-neutral-700 transition-all active:scale-95"
+                            >
+                                Load More Contacts ({filteredContacts.length - displayCount} left)
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
