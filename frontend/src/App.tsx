@@ -15,7 +15,23 @@ function App() {
   return (
     <BrowserRouter>
       <WhatsAppProvider>
-        <Toaster richColors position="top-right" />
+        <Toaster 
+          richColors 
+          expand={false} 
+          position="top-right" 
+          theme="dark"
+          closeButton
+          toastOptions={{
+            style: {
+              background: '#0a0a0a',
+              border: '1px solid #262626',
+              color: '#fff',
+              borderRadius: '12px',
+              fontFamily: 'Inter, sans-serif'
+            },
+            className: 'border-emerald-500/20'
+          }}
+        />
         <Layout>
           <Routes>
           <Route path="/login" element={<LoginPage />} />

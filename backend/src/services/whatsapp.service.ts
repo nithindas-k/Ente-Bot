@@ -197,9 +197,11 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         const body = msg.body;
         const phoneNumber = from.split('@')[0];
 
+        console.log(`[WhatsApp] Received message from ${phoneNumber}: "${body}"`);
+
         let contact = await this.contactRepo.findByPhone(null, phoneNumber);
         if (!contact) {
-            // Create a minimal contact record for unknown senders (botEnabled = false by default)
+            console.log(`[WhatsApp] New stranger messaged: ${phoneNumber}. Creating record...`);
             contact = await this.contactRepo.create({
                 name: msg._data?.notifyName || "Unknown",
                 phoneNumber,
@@ -208,8 +210,11 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             });
         }
 
-        // Only reply if this contact is whitelisted
-        if (!contact.botEnabled) return;
+        // ONLY REPLY IF ENABLED
+        if (!contact.botEnabled) {
+            console.log(`[WhatsApp] Bot is DISABLED for ${phoneNumber} (${contact.name}). Ignoring.`);
+            return;
+        }
 
         const isSafe = await this.antiSpamService.checkAllRules(phoneNumber);
         if (!isSafe) {
@@ -387,11 +392,22 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             });
 
             console.log(`[WhatsApp] Saved (named) contacts after filter: ${savedContacts.length} / ${results.length}`);
-            this.emit('sync-update', { sessionId, message: `Found ${savedContacts.length} saved contacts. Wiping old data...`, progress: 5 });
+            this.emit('sync-update', { sessionId, message: `Found ${savedContacts.length} saved contacts. Sanitizing database...`, progress: 5 });
 
+            // Step 3: GET LIST OF CURRENTLY ENABLED BOTS
+            const enabledPhones = new Set<string>();
+            try {
+                const results = await this.contactRepo.findAll({ botEnabled: true });
+                results.forEach((c: any) => enabledPhones.add(c.phoneNumber));
+                console.log(`[WhatsApp] Preserving bot status for ${enabledPhones.size} contacts.`);
+            } catch (e) {
+                console.warn("[WhatsApp] Failed to fetch enabled bots list before sync.");
+            }
+
+            // Step 4: WIPE EVERYTHING (to remove unsaved people)
             try {
                 await this.contactRepo.deleteMany({});
-                console.log(`[WhatsApp] Old contacts wiped. Rebuilding from scratch...`);
+                console.log(`[WhatsApp] Database cleared for fresh rebuild.`);
             } catch (wipeErr) {
                 console.error('[WhatsApp] Failed to wipe contacts before sync:', wipeErr);
             }
@@ -401,19 +417,21 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 return;
             }
 
-            this.emit('sync-update', { sessionId, message: `Syncing ${savedContacts.length} contacts...`, progress: 10 });
+            this.emit('sync-update', { sessionId, message: `Rebuilding: ${savedContacts.length} contacts...`, progress: 10 });
 
-            // Step 4: Insert all saved contacts fresh
+            // Step 5: Insert all saved contacts fresh (re-applying enabled status)
             let current = 0;
             for (const item of savedContacts) {
                 const phone = item.id?.user || item.id?._serialized?.split('@')[0];
                 if (!phone) continue;
 
+                const shouldBeEnabled = enabledPhones.has(phone);
+
                 try {
                     await this.contactRepo.create({
                         name: item.name || item.pushname || "Unknown",
                         phoneNumber: phone,
-                        botEnabled: false,
+                        botEnabled: shouldBeEnabled,
                         dailyMessageCount: 0
                     });
                     if (current % 10 === 0) await new Promise(resolve => setTimeout(resolve, 50));
@@ -432,7 +450,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 }
             }
             this.emit('sync-update', { sessionId, message: `Sync complete! ${savedContacts.length} saved contacts loaded.`, progress: 100 });
-        } catch (err) {
+        } catch (err: any) {
             console.error(`[WhatsApp] Sync failed for ${sessionId}:`, err);
             this.emit('sync-update', { sessionId, message: 'Sync failed part-way (Memory Limit).', progress: 100, error: true });
         }
