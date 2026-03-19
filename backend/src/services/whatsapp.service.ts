@@ -104,11 +104,6 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                         '--window-size=1280,720',
                     ],
                     protocolTimeout: 60000
-                },
-                webVersion: '2.3000.1018901614',
-                webVersionCache: {
-                    type: 'remote',
-                    remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/2.3000.1018901614.html'
                 }
             });
 
