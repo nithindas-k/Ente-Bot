@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["...", "chromium", "glib", "nss", "fontconfig", "xorg.libX11"]
+nixPkgs = ["nodejs", "chromium", "glib", "nss", "fontconfig", "xorg.libX11"]
 
 [phases.build]
 cmds = ["npm install", "npm run build"]
