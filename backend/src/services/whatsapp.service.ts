@@ -81,7 +81,8 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 puppeteer: {
                     headless: true,
                     executablePath: this.getChromePath(),
-                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+                    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+                    protocolTimeout: 0
                 },
                 webVersion: '2.3000.1018901614',
                 webVersionCache: {
@@ -222,11 +223,31 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         this.debounceTimers.set(bufferKey, timer);
     }
 
+    async getProfilePicUrl(phone: string): Promise<string | null> {
+        const firstSession = Array.from(this.sessions.values()).find(s => s.isReady);
+        if (firstSession) {
+            try {
+                const formatted = phone.includes('@') ? phone : `${phone}@c.us`;
+                return await firstSession.client.getProfilePicUrl(formatted);
+            } catch (err) {
+                console.error(`[WhatsApp] Failed to fetch DP for ${phone}:`, err);
+                return null;
+            }
+        }
+        return null;
+    }
+
     async syncContacts(sessionId: string): Promise<void> {
         const session = this.sessions.get(sessionId);
         if (!session?.isReady) return;
         try {
+            this.emit('sync-update', { sessionId, message: 'Starting contact synchronization...', progress: 0 });
             const chats = await session.client.getChats();
+            const total = chats.filter(c => !c.isGroup).length;
+            let current = 0;
+
+            this.emit('sync-update', { sessionId, message: `Found ${total} contacts to sync.`, progress: 10 });
+
             for (const chat of chats) {
                 if (chat.isGroup) continue;
                 const phone = chat.id.user;
@@ -239,9 +260,20 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                         dailyMessageCount: 0
                     });
                 }
+                current++;
+                if (current % 5 === 0 || current === total) {
+                    const progress = 10 + Math.floor((current / total) * 80);
+                    this.emit('sync-update', { 
+                        sessionId, 
+                        message: `Syncing contacts: ${current}/${total}`, 
+                        progress 
+                    });
+                }
             }
+            this.emit('sync-update', { sessionId, message: 'Contact synchronization complete!', progress: 100 });
         } catch (err) {
             console.error(`[WhatsApp] Sync failed for ${sessionId}:`, err);
+            this.emit('sync-update', { sessionId, message: 'Contact synchronization failed.', progress: 0, error: true });
         }
     }
 

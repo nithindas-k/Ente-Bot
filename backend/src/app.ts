@@ -102,12 +102,16 @@ connectDB().then(async () => {
         io.to(`session:${sessionId}`).emit('status-update', status);
     });
 
+    whatsappService.on('sync-update', (data) => {
+        const { sessionId, ...rest } = data;
+        io.to(`session:${sessionId}`).emit('sync-update', rest);
+    });
+
     const authController = new AuthController(null, userRepo, aiService);
     app.use('/api/auth', createAuthRouter(authController));
     
     app.get('/api/contacts/dp/:phone', async (req, res) => {
-        // Multi-session DP would need sessionId from query/header
-        const dpUrl = await (whatsappService as any).getProfilePicUrl(req.params.phone);
+        const dpUrl = await whatsappService.getProfilePicUrl(req.params.phone);
         res.json({ url: dpUrl });
     });
     

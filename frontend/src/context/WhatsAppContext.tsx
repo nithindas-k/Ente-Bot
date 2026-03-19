@@ -12,12 +12,23 @@ interface WhatsAppStatus {
     } | null;
 }
 
+export interface SyncLog {
+    id: string;
+    message: string;
+    progress: number;
+    timestamp: Date;
+    type: 'info' | 'success' | 'error';
+}
+
 interface WhatsAppContextType {
     sessionId: string;
     status: WhatsAppStatus;
+    syncLogs: SyncLog[];
+    syncProgress: number;
     isRefreshing: boolean;
     refreshQr: () => Promise<void>;
     logout: () => Promise<void>;
+    clearLogs: () => void;
 }
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined);
@@ -36,6 +47,8 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
         qr: null,
         account: null,
     });
+    const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
+    const [syncProgress, setSyncProgress] = useState(0);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const socketRef = useRef<Socket | null>(null);
 
@@ -69,6 +82,23 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
 
         socket.on('status-update', (data) => {
             setStatus(data);
+            if (data.status === 'connected') {
+                // Could reset logs here or keep them
+            }
+        });
+
+        socket.on('sync-update', (data: { message: string, progress: number, error?: boolean }) => {
+            setSyncProgress(data.progress);
+            setSyncLogs((prev: SyncLog[]) => [
+                {
+                    id: Math.random().toString(36).substring(7),
+                    message: data.message,
+                    progress: data.progress,
+                    timestamp: new Date(),
+                    type: (data.error ? 'error' : (data.progress === 100 ? 'success' : 'info')) as 'info' | 'success' | 'error'
+                },
+                ...prev
+            ].slice(0, 50)); // Keep last 50 logs
         });
 
         return () => {
@@ -92,13 +122,26 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
         if (!confirm("Logout from WhatsApp?")) return;
         try {
             await axios.post(`${API_BASE_URL}/api/auth/whatsapp/logout`, { sessionId });
+            setSyncLogs([]);
+            setSyncProgress(0);
         } catch (e) {
             console.error("Logout failed", e);
         }
     };
 
+    const clearLogs = () => setSyncLogs([]);
+
     return (
-        <WhatsAppContext.Provider value={{ sessionId, status, isRefreshing, refreshQr, logout }}>
+        <WhatsAppContext.Provider value={{ 
+            sessionId, 
+            status, 
+            syncLogs, 
+            syncProgress, 
+            isRefreshing, 
+            refreshQr, 
+            logout,
+            clearLogs
+        }}>
             {children}
         </WhatsAppContext.Provider>
     );

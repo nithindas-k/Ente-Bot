@@ -10,6 +10,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
 import { useWhatsApp } from "@/context/WhatsAppContext";
+import { ActivityLog } from "@/components/ActivityLog";
 
 export default function DashboardPage() {
     const { status: waStatus } = useWhatsApp();
@@ -123,16 +124,12 @@ export default function DashboardPage() {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="main-grid-item lg:col-span-1">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="main-grid-item lg:col-span-5 h-full">
                     <QRScanner />
                 </div>
-                <div className="main-grid-item lg:col-span-2 bg-neutral-900 border border-neutral-800 rounded-xl p-6 hover:border-neutral-700 transition-colors">
-                    <h3 className="text-lg font-bold text-white mb-4">Live Activity Log</h3>
-                    <div className="space-y-2 text-sm text-neutral-400">
-                        <p className="animate-pulse">[12:00:00] Initializing system...</p>
-                        <p className="animate-pulse delay-75">[12:00:05] Waiting for WhatsApp connection...</p>
-                    </div>
+                <div className="main-grid-item lg:col-span-7 h-full">
+                    <ActivityLog />
                 </div>
             </div>
         </div>
