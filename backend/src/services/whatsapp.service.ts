@@ -313,20 +313,29 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 }
             }
 
-            // Step 2: Filter to ONLY saved contacts
-            // A contact is "saved" if:
-            //   - it is not a group
-            //   - it has a real name set (not just a phone number)
-            //   - the name is not the same as the phone number itself
+            
+            const seenPhones = new Set<string>();
             const savedContacts = results.filter(r => {
                 if (r.isGroup) return false;
                 if (!r.id?.user && !r.id?._serialized) return false;
+
+                // Skip WhatsApp LID entries (internal device IDs, not real phone numbers)
+                // These look like: 253811176263868@lid
+                const serialized: string = r.id?._serialized || '';
+                if (serialized.endsWith('@lid')) return false;
+
                 const name: string = (r.name || r.pushname || '').trim();
                 if (!name) return false;
-                // If the "name" looks exactly like a phone number, skip it (unsaved)
+
+                // If the "name" looks exactly like a phone number, skip it (unsaved contact)
                 const phone = r.id?.user || '';
                 const nameIsPhone = /^\+?\d[\d\s\-().]{6,}$/.test(name) || name === phone;
                 if (nameIsPhone) return false;
+
+                // Deduplicate — same phone number appearing twice
+                if (seenPhones.has(phone)) return false;
+                seenPhones.add(phone);
+
                 return true;
             });
 
