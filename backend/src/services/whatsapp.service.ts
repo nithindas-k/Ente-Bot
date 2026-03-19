@@ -185,7 +185,10 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
     }
 
     private async handleIncomingMessage(sessionId: string, msg: any) {
-        if (msg.fromMe || msg.type !== 'chat' || !msg.body) return;
+        console.log(`[RAW MESSAGE] Incoming from ${msg.from} | Type: ${msg.type} | Body: "${msg.body}" | FromMe: ${msg.fromMe}`);
+
+        if (msg.fromMe || !msg.body) return;
+        if (msg.type !== 'chat' && msg.type !== 'text') return; // sometimes it's text
         if (msg.from.endsWith('@g.us')) return;
 
         const from = msg.from;
