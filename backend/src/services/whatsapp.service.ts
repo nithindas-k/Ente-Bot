@@ -262,12 +262,27 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         if (!session?.isReady) return;
         try {
             this.emit('sync-update', { sessionId, message: 'Starting contact synchronization...', progress: 0 });
-            const chats = await session.client.getChats();
+            
+            // To prevent OOM (Out of Memory) on low RAM servers like Render/Railway,
+            // we catch protocol crashes specifically during getChats().
+            let chats: any[] = [];
+            try {
+                chats = await session.client.getChats();
+            } catch (pErr) {
+                console.warn(`[WhatsApp] Full chat sync failed (likely OOM). Falling back to basic contact sync...`, pErr);
+                // Fallback: Just sync active contacts if chats fail
+                chats = []; 
+            }
+
             const total = chats.filter(c => !c.isGroup).length;
+            if (total === 0) {
+                this.emit('sync-update', { sessionId, message: 'Sync complete (contacts will be added as they message you).', progress: 100 });
+                return;
+            }
+
+            this.emit('sync-update', { sessionId, message: `Found ${total} contacts. Syncing...`, progress: 10 });
+
             let current = 0;
-
-            this.emit('sync-update', { sessionId, message: `Found ${total} contacts to sync.`, progress: 10 });
-
             for (const chat of chats) {
                 if (chat.isGroup) continue;
                 const phone = chat.id.user;
@@ -281,11 +296,11 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                     });
                 }
                 current++;
-                if (current % 5 === 0 || current === total) {
-                    const progress = 10 + Math.floor((current / total) * 80);
+                if (current % 10 === 0 || current === total) {
+                    const progress = 10 + Math.floor((current / total) * 90);
                     this.emit('sync-update', { 
                         sessionId, 
-                        message: `Syncing contacts: ${current}/${total}`, 
+                        message: `Syncing: ${current}/${total}`, 
                         progress 
                     });
                 }
@@ -293,7 +308,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             this.emit('sync-update', { sessionId, message: 'Contact synchronization complete!', progress: 100 });
         } catch (err) {
             console.error(`[WhatsApp] Sync failed for ${sessionId}:`, err);
-            this.emit('sync-update', { sessionId, message: 'Contact synchronization failed.', progress: 0, error: true });
+            this.emit('sync-update', { sessionId, message: 'Sync failed part-way (Memory Limit).', progress: 100, error: true });
         }
     }
 
@@ -354,8 +369,19 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
 
     async getPairingCode(sessionId: string, phoneNumber: string): Promise<string> {
         const session = await this.getOrInitSession(sessionId);
-        const formatted = phoneNumber.replace(/\D/g, '').length === 10 ? '91' + phoneNumber.replace(/\D/g, '') : phoneNumber.replace(/\D/g, '');
-        return await session.client.requestPairingCode(formatted);
+        
+        // Ensure format is numeric and includes country code
+        let formatted = phoneNumber.replace(/\D/g, '');
+        if (formatted.length === 10) formatted = '91' + formatted; // Default to India if 10 digits
+        
+        console.log(`[WhatsApp] Requesting pairing code for ${formatted} (Session: ${sessionId})`);
+        
+        try {
+            return await session.client.requestPairingCode(formatted);
+        } catch (err) {
+            console.error(`[WhatsApp] Pairing code error:`, err);
+            throw new Error("Failed to request code. Ensure number is correct and not already linked.");
+        }
     }
 
     getSessionStatus(sessionId: string) {

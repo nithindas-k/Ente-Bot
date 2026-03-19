@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { toast } from 'sonner';
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Settings, ShieldCheck, ShieldAlert, Search, Users, Filter, Bot, Loader2, UserPlus } from "lucide-react";
@@ -102,14 +103,17 @@ export default function ContactsPage() {
         setIsSyncing(true);
         const sid = localStorage.getItem('ente_bot_session_id') || 'default';
         try {
+            toast.info("Starting synchronization...");
             await axios.post(`${API_BASE_URL}/api/contacts/sync`, { sessionId: sid });
             setTimeout(() => {
                 fetchContacts();
                 setIsSyncing(false);
+                toast.success("Contacts updated!");
             }, 3000);
         } catch (error) {
             console.error("Sync failed", error);
             setIsSyncing(false);
+            toast.error("Sync failed. Server might be low on RAM.");
         }
     };
 

@@ -1,4 +1,5 @@
 import { QrCode, RefreshCw, CheckCircle2, Wifi, Smartphone, ArrowRight, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
 import axios from 'axios';
 import { API_BASE_URL } from '@/config/api.config';
@@ -26,12 +27,15 @@ export default function QRScanner({ isWidget = false }: { isWidget?: boolean }) 
                 phone: phoneNumber.replace(/\+/g, ''),
                 sessionId
             });
-            if (res.data?.success) {
+            if (res.data?.code) {
                 setPairingCode(res.data.code);
+                toast.success("Pairing code generated!");
+            } else {
+                toast.error("Failed to generate code. Try refreshing QR first.");
             }
         } catch (err) {
             console.error("Failed to get pairing code", err);
-            alert("Failed to generate code. Try refreshing QR first.");
+            toast.error("Error: Refresh QR first, then try the code again.");
         } finally {
             setIsRequestingCode(false);
         }

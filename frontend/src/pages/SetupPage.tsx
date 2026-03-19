@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { ShieldCheck, Globe, ChevronRight, ChevronLeft, ExternalLink, ArrowRight, Camera, CheckCircle2, LogOut, Wifi } from "lucide-react";
+import { toast } from 'sonner';
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import QRScanner from "@/components/QRScanner";
@@ -130,7 +131,7 @@ const Steps = [
                     <div className="py-8 flex flex-col items-center text-center space-y-6 px-6">
                         {/* Realistic illustration replacing icons */}
                         <div className="relative w-full h-[100px] flex items-center justify-center mb-2">
-                            <div className="relative flex items-center justify-center w-[140px] h-full mx-auto tracking-tighter">
+                            <div className="relative flex items-center justify-center w-[140px] h-[95px] mx-auto tracking-tighter">
                                 {/* Monitor (Dashed) */}
                                 <div className="w-[105px] h-[75px] rounded-[12px] border-[2px] border-dashed border-[#00a884]/60 bg-[#0b141a] absolute right-0 z-10 flex text-center items-center justify-center pb-2">
                                      <div className="flex flex-col items-center translate-x-3 mt-3">
@@ -225,7 +226,8 @@ export default function SetupPage() {
                 const userRes = await axios.get(`${API_BASE_URL}/api/auth/me`);
                 setHasApiKey(!!userRes.data?.user?.groqApiKey);
             } catch (err) {
-                console.error("Failed to fetch WhatsApp or User status", err);
+                console.error("Failed to fetch WhatsApp or User status", err); // Original console.error
+                toast.error("Failed to fetch connection status."); // Added toast
             }
         };
 
@@ -261,8 +263,10 @@ export default function SetupPage() {
             await axios.post(`${API_BASE_URL}/api/auth/whatsapp/logout`);
             setIsConnected(false);
             setCur(0);
+            toast.success("Disconnected from WhatsApp.");
         } catch (err) {
-            console.error("Logout failed", err);
+            toast.error("Logout failed. Please try again.");
+            console.error("Logout failed", err); // Original console.error
         } finally {
             setIsLoggingOut(false);
         }

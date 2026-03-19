@@ -9,10 +9,13 @@ import HowToUsePage from './pages/HowToUsePage';
 import { Layout } from './components/Layout';
 import { WhatsAppProvider } from './context/WhatsAppContext';
 
+import { Toaster } from 'sonner';
+
 function App() {
   return (
     <BrowserRouter>
       <WhatsAppProvider>
+        <Toaster richColors position="top-right" />
         <Layout>
           <Routes>
           <Route path="/login" element={<LoginPage />} />

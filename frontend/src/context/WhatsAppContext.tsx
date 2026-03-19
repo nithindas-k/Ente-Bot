@@ -33,6 +33,8 @@ interface WhatsAppContextType {
 
 const WhatsAppContext = createContext<WhatsAppContextType | undefined>(undefined);
 
+import { toast } from 'sonner';
+
 export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
     const [sessionId] = useState(() => {
         const saved = localStorage.getItem('ente_bot_session_id');
@@ -63,6 +65,7 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
                     await axios.get(`${API_BASE_URL}/api/auth/qr?sessionId=${sessionId}`);
                 }
             } catch (e) {
+                toast.error("Failed to connect to WhatsApp service.");
                 console.error("Init WhatsApp failed", e);
             }
         };
@@ -83,7 +86,7 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
         socket.on('status-update', (data) => {
             setStatus(data);
             if (data.status === 'connected') {
-                // Could reset logs here or keep them
+                toast.success("WhatsApp Connected!");
             }
         });
 
@@ -99,6 +102,9 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
                 },
                 ...prev
             ].slice(0, 50)); // Keep last 50 logs
+            
+            if (data.error) toast.error(data.message);
+            else if (data.progress === 100) toast.success("Contacts Synced Successfully");
         });
 
         return () => {
@@ -111,7 +117,9 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
         setStatus(prev => ({ ...prev, qr: null }));
         try {
             await axios.post(`${API_BASE_URL}/api/auth/whatsapp/refresh`, { sessionId });
+            toast.info("Refreshing QR code...");
         } catch (e) {
+            toast.error("Refresh failed.");
             console.error("Refresh QR failed", e);
         } finally {
             setTimeout(() => setIsRefreshing(false), 2000);
@@ -125,8 +133,10 @@ export const WhatsAppProvider = ({ children }: { children: ReactNode }) => {
             setSyncLogs([]);
             setSyncProgress(0);
             localStorage.removeItem('ente_bot_session_id');
+            toast.success("Logged out successfully");
             window.location.href = '/';
         } catch (e) {
+            toast.error("Logout failed.");
             console.error("Logout failed", e);
         }
     };
