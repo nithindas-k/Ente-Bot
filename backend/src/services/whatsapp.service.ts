@@ -296,69 +296,87 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         if (!session?.isReady) return;
         try {
             this.emit('sync-update', { sessionId, message: 'Starting contact synchronization...', progress: 0 });
-            
-            // getContacts() is significantly lighter and less prone to crashing than getChats()
-            // when there are many conversations.
+
+            // Step 1: Fetch all contacts from WhatsApp
             let results: any[] = [];
             try {
                 results = await session.client.getContacts();
-                console.log(`[WhatsApp] Fetched ${results.length} contacts via getContacts()`);
+                console.log(`[WhatsApp] Fetched ${results.length} total entries via getContacts()`);
             } catch (cErr) {
-                console.warn(`[WhatsApp] Contacts sync failed, trying getChats() fallback...`);
+                console.warn(`[WhatsApp] getContacts() failed, trying getChats() fallback...`);
                 try {
                     results = await session.client.getChats();
                 } catch (pErr) {
-                    console.error(`[WhatsApp] Major OOM during sync. Bot is still connected but list skipped.`);
-                    results = [];
+                    console.error(`[WhatsApp] Major OOM during sync. Aborting.`);
+                    this.emit('sync-update', { sessionId, message: 'Sync failed (Memory Limit).', progress: 100, error: true });
+                    return;
                 }
             }
 
-            const total = results.filter(r => 
-                !r.isGroup && 
-                r.isMyContact === true && // ONLY SAVED CONTACTS
-                (r.isUser || r.id?.user)
-            ).length;
-            
-            if (total === 0) {
-                this.emit('sync-update', { sessionId, message: 'No saved contacts found! (Bot only syncs your phonebook).', progress: 100 });
+            // Step 2: Filter to ONLY saved contacts
+            // A contact is "saved" if:
+            //   - it is not a group
+            //   - it has a real name set (not just a phone number)
+            //   - the name is not the same as the phone number itself
+            const savedContacts = results.filter(r => {
+                if (r.isGroup) return false;
+                if (!r.id?.user && !r.id?._serialized) return false;
+                const name: string = (r.name || r.pushname || '').trim();
+                if (!name) return false;
+                // If the "name" looks exactly like a phone number, skip it (unsaved)
+                const phone = r.id?.user || '';
+                const nameIsPhone = /^\+?\d[\d\s\-().]{6,}$/.test(name) || name === phone;
+                if (nameIsPhone) return false;
+                return true;
+            });
+
+            console.log(`[WhatsApp] Saved (named) contacts after filter: ${savedContacts.length} / ${results.length}`);
+            this.emit('sync-update', { sessionId, message: `Found ${savedContacts.length} saved contacts. Wiping old data...`, progress: 5 });
+
+            // Step 3: Wipe the old contact list from DB so stale entries are removed
+            try {
+                await this.contactRepo.deleteMany({});
+                console.log(`[WhatsApp] Old contacts wiped. Rebuilding from scratch...`);
+            } catch (wipeErr) {
+                console.error('[WhatsApp] Failed to wipe contacts before sync:', wipeErr);
+            }
+
+            if (savedContacts.length === 0) {
+                this.emit('sync-update', { sessionId, message: 'No saved contacts found in WhatsApp.', progress: 100 });
                 return;
             }
 
-            this.emit('sync-update', { sessionId, message: `Found ${total} contacts. Syncing...`, progress: 10 });
+            this.emit('sync-update', { sessionId, message: `Syncing ${savedContacts.length} contacts...`, progress: 10 });
 
+            // Step 4: Insert all saved contacts fresh
             let current = 0;
-            for (const item of results) {
-                if (item.isGroup || !item.isMyContact) continue; // Skip groups and unsaved people
+            for (const item of savedContacts) {
                 const phone = item.id?.user || item.id?._serialized?.split('@')[0];
                 if (!phone) continue;
 
                 try {
-                    const existing = await this.contactRepo.findByPhone(null, phone);
-                    if (!existing) {
-                        await this.contactRepo.create({
-                            name: item.name || item.pushname || "Unknown",
-                            phoneNumber: phone,
-                            botEnabled: false,
-                            dailyMessageCount: 0
-                        });
-                        // Small pause every 10 contacts to allow Event Loop to breathe
-                        if (current % 10 === 0) await new Promise(resolve => setTimeout(resolve, 50));
-                    }
+                    await this.contactRepo.create({
+                        name: item.name || item.pushname || "Unknown",
+                        phoneNumber: phone,
+                        botEnabled: false,
+                        dailyMessageCount: 0
+                    });
+                    if (current % 10 === 0) await new Promise(resolve => setTimeout(resolve, 50));
                 } catch (dbErr) {
                     console.error("DB error during sync:", dbErr);
                 }
 
                 current++;
-                if (current % 20 === 0 || current === total) {
-                    const progress = 10 + Math.floor((current / total) * 90);
-                    this.emit('sync-update', { 
-                        sessionId, 
-                        message: `Syncing: ${current}/${total}`, 
-                        progress 
+                if (current % 20 === 0 || current === savedContacts.length) {
+                    const progress = 10 + Math.floor((current / savedContacts.length) * 90);
+                    this.emit('sync-update', {
+                        sessionId,
+                        message: `Syncing: ${current}/${savedContacts.length}`,
+                        progress
                     });
                 }
             }
-            this.emit('sync-update', { sessionId, message: 'Contact synchronization complete!', progress: 100 });
+            this.emit('sync-update', { sessionId, message: `Sync complete! ${savedContacts.length} saved contacts loaded.`, progress: 100 });
         } catch (err) {
             console.error(`[WhatsApp] Sync failed for ${sessionId}:`, err);
             this.emit('sync-update', { sessionId, message: 'Sync failed part-way (Memory Limit).', progress: 100, error: true });
