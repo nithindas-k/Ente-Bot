@@ -300,9 +300,14 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 }
             }
 
-            const total = results.filter(r => !r.isGroup && (r.isUser || r.id?.user)).length;
+            const total = results.filter(r => 
+                !r.isGroup && 
+                r.isMyContact === true && // ONLY SAVED CONTACTS
+                (r.isUser || r.id?.user)
+            ).length;
+            
             if (total === 0) {
-                this.emit('sync-update', { sessionId, message: 'Sync complete (Add contacts by messaging them).', progress: 100 });
+                this.emit('sync-update', { sessionId, message: 'No saved contacts found! (Bot only syncs your phonebook).', progress: 100 });
                 return;
             }
 
@@ -310,7 +315,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
 
             let current = 0;
             for (const item of results) {
-                if (item.isGroup) continue;
+                if (item.isGroup || !item.isMyContact) continue; // Skip groups and unsaved people
                 const phone = item.id?.user || item.id?._serialized?.split('@')[0];
                 if (!phone) continue;
 

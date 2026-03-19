@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from 'sonner';
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShieldCheck, Globe, CheckCircle2, Copy, ExternalLink, ChevronRight, ChevronLeft, Lock, Zap, Trash2, RefreshCcw } from "lucide-react";
@@ -250,7 +251,7 @@ export default function ApiKeySetup() {
       setTimeout(() => navigate('/dashboard'), 2000);
     } catch (err) {
       setSaved(false);
-      alert("Failed to save API Key. Please try again.");
+      toast.error("Failed to save API Key. Please try again.");
     }
   };
 
@@ -259,9 +260,9 @@ export default function ApiKeySetup() {
           await axios.delete(`${API_BASE_URL}/api/auth/groq-key`);
           localStorage.removeItem("groq_api_key");
           setHasExistingKey(false);
-          setCur(0);
+          toast.success("API Key wiped safely.");
       } catch (err) {
-          alert("Failed to delete API Key.");
+          toast.error("Failed to delete API Key.");
       }
   };
 

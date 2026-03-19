@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { toast } from 'sonner';
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,23 +57,26 @@ export default function PersonalityPage() {
         setIsSaving(true);
         try {
             await axios.put(`${API_BASE_URL}/api/personalities/${contactId}`, { systemPrompt: prompt });
-            // Using a more subtle notification style could be better but sticking to logic
+            toast.success("Instructions saved!");
         } catch (error) {
             console.error("Error saving prompt:", error);
+            toast.error("Failed to save.");
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleTrain = async () => {
-        if (!chatSample.trim()) return alert("Please upload or paste some chat samples first.");
+        if (!chatSample.trim()) return toast.error("Please upload or paste some chat samples first.");
         setIsTraining(true);
         try {
             const response = await axios.post(`${API_BASE_URL}/api/personalities/${contactId}/train`, { rawChat: chatSample });
             setPrompt(response.data.personality.systemPrompt);
             setLastTrained(response.data.personality.trainedAt);
+            toast.success("AI brain trained successfully!");
         } catch (error) {
             console.error("Error training AI:", error);
+            toast.error("Training failed.");
         } finally {
             setIsTraining(false);
         }

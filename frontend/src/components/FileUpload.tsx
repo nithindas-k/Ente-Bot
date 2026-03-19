@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Upload, FileText, X, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
@@ -19,7 +20,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect }) => {
 
     const processFile = (file: File) => {
         if (file.type !== 'text/plain' && !file.name.endsWith('.txt')) {
-            alert('Please upload a .txt file (WhatsApp export)');
+            toast.error('Invalid file type. Please upload a .txt file.');
             return;
         }
 
