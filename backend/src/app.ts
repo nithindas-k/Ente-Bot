@@ -60,7 +60,6 @@ connectDB().then(async () => {
     const whatsappService = new WhatsappService(antiSpamService, aiService, contactRepo, personalityRepo, messageRepo);
     whatsappService.initialize();
 
-    // Socket.io integration
     io.on('connection', (socket) => {
         console.log('[Socket] New client connected');
         
@@ -68,7 +67,6 @@ connectDB().then(async () => {
             console.log(`[Socket] Client joining session: ${sessionId}`);
             socket.join(`session:${sessionId}`);
             
-            // Send current status immediately
             const status = whatsappService.getSessionStatus(sessionId);
             socket.emit('status-update', status);
         });
@@ -78,7 +76,6 @@ connectDB().then(async () => {
         });
     });
 
-    // Listen to WhatsApp events and broadcast via Socket.io
     whatsappService.on('qr', ({ sessionId, qr }) => {
         io.to(`session:${sessionId}`).emit('qr-update', { qr });
     });
