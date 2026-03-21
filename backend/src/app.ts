@@ -121,7 +121,6 @@ connectDB().then(async () => {
         res.json({ qr: session.lastQr });
     });
 
-    // ── NEW: Returns the first already-connected/ready session ──────
     app.get('/api/auth/active-session', (req, res) => {
         const activeSession = whatsappService.getActiveSession();
         if (activeSession) {
@@ -181,7 +180,6 @@ connectDB().then(async () => {
 
     const shutdown = async () => {
         console.log('[Server] Shutting down gracefully...');
-        // Should destroy all sessions
         server.close(() => process.exit(0));
     };
     process.on('SIGTERM', shutdown);
