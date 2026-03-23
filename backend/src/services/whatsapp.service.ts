@@ -392,7 +392,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             console.log(`[WhatsApp] Saved (named) contacts after filter: ${savedContacts.length} / ${results.length}`);
             this.emit('sync-update', { sessionId, message: `Found ${savedContacts.length} saved contacts. Sanitizing database...`, progress: 5 });
 
-            // Step 3: GET LIST OF CURRENTLY ENABLED BOTS
+            
             const enabledPhones = new Set<string>();
             try {
                 const results = await this.contactRepo.findAll({ botEnabled: true });
