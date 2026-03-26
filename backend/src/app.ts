@@ -43,7 +43,7 @@ connectDB().then(async () => {
     const messageRepo = new MessageRepository();
     const antiSpamService = new AntiSpamService(contactRepo);
     const aiService = new AIService();
-    
+
     let user = await userRepo.findOne({});
     if (!user) {
         user = await userRepo.create({
@@ -62,11 +62,11 @@ connectDB().then(async () => {
 
     io.on('connection', (socket) => {
         console.log('[Socket] New client connected');
-        
+
         socket.on('join-session', (sessionId) => {
             console.log(`[Socket] Client joining session: ${sessionId}`);
             socket.join(`session:${sessionId}`);
-            
+
             const status = whatsappService.getSessionStatus(sessionId);
             socket.emit('status-update', status);
         });
@@ -106,15 +106,15 @@ connectDB().then(async () => {
 
     const authController = new AuthController(null, userRepo, aiService);
     app.use('/api/auth', createAuthRouter(authController));
-    
+
     app.get('/api/contacts/dp/:phone', async (req, res) => {
         const dpUrl = await whatsappService.getProfilePicUrl(req.params.phone);
         res.json({ url: dpUrl });
     });
-    
+
     app.use('/api/contacts', contactRoutes);
     app.use('/api/messages', messageRoutes);
-    
+
     app.get('/api/auth/qr', async (req, res) => {
         const sessionId = (req.query.sessionId as string) || 'default';
         const session = await whatsappService.getOrInitSession(sessionId);
@@ -146,7 +146,7 @@ connectDB().then(async () => {
         await whatsappService.refreshQr(sessionId);
         res.json({ success: true, message: "Refreshing QR code." });
     });
-    
+
     app.post('/api/auth/whatsapp/pairing-code', async (req, res): Promise<any> => {
         const { phone, sessionId = 'default' } = req.body;
         if (!phone) {
@@ -163,7 +163,7 @@ connectDB().then(async () => {
     app.post('/api/contacts/sync', async (req, res) => {
         const { sessionId = 'default' } = req.body;
         try {
-     
+
             whatsappService.syncContacts(sessionId);
             res.json({ success: true, message: "Contact synchronization started." });
         } catch (err) {
@@ -172,6 +172,17 @@ connectDB().then(async () => {
     });
 
     app.use('/api/dashboard', createDashboardRouter(whatsappService));
+    app.post('/api/test/ai', async (req, res) => {
+        const { message } = req.body;
+        if (!message) return res.status(400).json({ error: "Message is required." });
+        try {
+            const systemPrompt = aiService.buildSystemPrompt("You are a casual test friend at the Ente Bot testing center.", message);
+            const reply = await aiService.generateReply(systemPrompt, [], message);
+            res.json({ reply });
+        } catch (err) {
+            res.status(500).json({ error: "AI failed to respond. Check backend console." });
+        }
+    });
     app.use('/api/personalities', createPersonalityRouter(aiService));
 
     const server = httpServer.listen(PORT, () => {

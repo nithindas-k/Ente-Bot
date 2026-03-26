@@ -1,0 +1,44 @@
+# Ente Bot - AI Upgrade Implementation Plan (LangChain + DuckDuckGo)
+
+This plan outlines the migration from a basic SDK-based AI flow to a sophisticated LangChain Agentic flow.
+
+1. GOAL
+=======
+Integrate LangChain to handle:
+- Groq Model (Llama 3.3/3.1)
+- DuckDuckGo Search (to understand messages better)
+- Strict Manglish enforcement
+- Automatic Tone Matching
+
+2. LIBRARIES TO INSTALL
+=======================
+In the /backend directory, run:
+npm install langchain @langchain/groq @langchain/community zod duckduckgo-search
+
+3. AI SERVICE REFACTOR (backend/src/services/ai.service.ts)
+===========================================================
+- Initialize 'ChatGroq' for the model.
+- Initialize 'DuckDuckGoSearch' as a Tool for the AI to use.
+- Create an AgentExecutor: This is the "brain" that decides when to search and how to speak.
+- New System Prompt: 
+  - "If asked about current news or things you don't know, search online first."
+  - "Speak ONLY in casual Manglish."
+  - "Use address words like 'Da', 'Machane', 'Aliya' naturally."
+  - "Match the sender's tone (Sad -> Supportive, Happy -> Excited)."
+
+4. WORKFLOW CHANGES
+====================
+- OLD: Receives message -> Processes with rigid prompt -> Replies.
+- NEW: Receives message -> AI THINKS (Do I need to search?) -> AI SEARCHES (if needed) -> AI MATCHES TONE -> Replies in Manglish.
+
+5. BENEFITS
+===========
+- Real-time Knowledge: Your bot can now talk about today's news or movies.
+- Better Context: Understands modern slang or viral trends via search.
+- Advanced Personalization: More human-like tone-matching.
+
+6. NEXT STEPS
+=============
+1. Install the npm packages.
+2. Refactor ai.service.ts to use the new LangChain Agent.
+3. Update whatsapp.service.ts to call the new agent-style generated replies.

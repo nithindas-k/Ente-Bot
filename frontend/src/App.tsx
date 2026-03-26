@@ -6,19 +6,21 @@ import ContactsPage from './pages/ContactsPage';
 import PersonalityPage from './pages/PersonalityPage';
 import ApiKeySetup from './pages/ApiKeySetup';
 import HowToUsePage from './pages/HowToUsePage';
+import TestChat from './pages/TestChat';
 import { Layout } from './components/Layout';
 import { WhatsAppProvider } from './context/WhatsAppContext';
 
 import { Toaster } from 'sonner';
 
+
 function App() {
   return (
     <BrowserRouter>
       <WhatsAppProvider>
-        <Toaster 
-          richColors 
-          expand={false} 
-          position="top-right" 
+        <Toaster
+          richColors
+          expand={false}
+          position="top-right"
           theme="dark"
           closeButton
           toastOptions={{
@@ -34,15 +36,16 @@ function App() {
         />
         <Layout>
           <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/setup" element={<SetupPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/contacts" element={<ContactsPage />} />
-          <Route path="/personality/:contactId" element={<PersonalityPage />} />
-          <Route path="/api-setup" element={<ApiKeySetup />} />
-          <Route path="/how-to-use" element={<HowToUsePage />} />
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/setup" element={<SetupPage />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/contacts" element={<ContactsPage />} />
+            <Route path="/personality/:contactId" element={<PersonalityPage />} />
+            <Route path="/api-setup" element={<ApiKeySetup />} />
+            <Route path="/how-to-use" element={<HowToUsePage />} />
+            <Route path="/test-chat" element={<TestChat />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
         </Layout>
       </WhatsAppProvider>
     </BrowserRouter>

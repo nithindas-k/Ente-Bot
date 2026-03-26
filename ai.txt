@@ -1,0 +1,40 @@
+# Ente Bot - AI Workflow
+
+How the AI works when a friend messages:
+
+1. 📩 **WhatsApp Message Arrival**
+   - The bot receives a message via `whatsapp-web.js`.
+   - It ignores group chats and messages sent by yourself.
+
+2. 🔍 **Contact & Permission Check**
+   - It identifies the sender by phone number.
+   - It only replies if you have toggled the "Bot Enabled" switch for that contact in the dashboard.
+   - It runs an anti-spam check to prevent flooding.
+
+3. ⏳ **Smart Buffering (5s Wait)**
+   - If a friend sends multiple messages (e.g., "Hi" ... "Food" ... "Kaycho?"), the bot waits for 5 seconds.
+   - It merges them into one message so the AI can understand everything at once.
+
+4. 🧠 **AI Processing (The "Brain")**
+   - **Message Analysis**: The bot scans for keywords like "food", "exam", "bore", etc.
+   - **Smart Slang**: It selects relevant Manglish words from its local dictionary (`manglish_dictionary.txt`) based on the topic.
+   - **Personality**: It uses the specific personality you trained or a default "Malayali Best Friend" persona.
+   - **Context**: It pulls the last 10 messages of your chat history so it doesn't forget the conversation.
+   - **Groq Llama 3**: It sends all this to the LLM (Llama 3.3 70B) to generate a natural, human-like Manglish reply.
+
+5. 🖐️ **Human Simulation**
+   - **Typing...**: The bot calculates a "Typing Delay" based on how long the reply is (simulating real typing speed).
+   - **Natural Rules**: It is instructed to always react first (e.g., "Ayyo!", "Poli!") and use address words like "Da", "Aliya", or "Machane".
+
+6. 📤 **Sending & Saving**
+   - The reply is sent back via WhatsApp.
+   - Both the incoming message and the AI reply are saved to the Database for future context.
+   - The daily message count for that sender is updated.
+
+---
+**Example Flow:**
+Friend: "Aliya food kaycho?"
+AI Analysis: Detected `isFood`.
+Dictionary: Loads `FOOD WORDS` (kazhichu, thinno, biriyani).
+Prompt: "You are a friend... It is afternoon... Keep it short..."
+Output: "Athe da, nalla beef biriyani kazhichu 🔥 nee thinno?"

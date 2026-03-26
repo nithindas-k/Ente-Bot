@@ -7,7 +7,8 @@ import {
   LogOut,
   X,
   Sparkles,
-  DownloadCloud
+  DownloadCloud,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const navItems = [
   { name: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { name: "Contacts", icon: Users, path: "/contacts" },
   { name: "Settings", icon: Settings, path: "/setup" },
+  { name: "AI Test Lab", icon: Bot, path: "/test-chat" },
 ];
 
 interface SidebarProps {
