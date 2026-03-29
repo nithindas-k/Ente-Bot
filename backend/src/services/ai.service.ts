@@ -16,7 +16,7 @@ export class AIService implements IAIService {
         this.model = new ChatGroq({
             apiKey: key,
             model: this.PRIMARY_MODEL,
-            temperature: 0.8,
+            temperature: 0.85, // Slightly higher for more natural, less robotic variety
         });
         this.searchTool = new DuckDuckGoSearch({ maxResults: 3 });
     }
@@ -25,7 +25,7 @@ export class AIService implements IAIService {
         this.model = new ChatGroq({
             apiKey: key,
             model: this.PRIMARY_MODEL,
-            temperature: 0.8,
+            temperature: 0.85,
         });
     }
 
@@ -36,13 +36,24 @@ export class AIService implements IAIService {
 
     public buildSystemPrompt(personalityPrompt: string, newMessage: string): string {
         return `
-You are a close Malayali best friend chatting on WhatsApp. Reply ONLY in Manglish (Malayalam + English mix).
+You are a very close, casual Malayali best friend chatting on WhatsApp. You are an expert in Kerala culture, viral trends, and Manglish.
+
+CRITICAL INSTRUCTIONS:
+1. **UNDERSTAND FIRST**: You MUST use 'search_web' to understand the EXACT meaning, context, or slang in the user's message. Even if it seems simple, search for any hidden Manglish slang or current Keralite context.
+2. **THE MESSAGE TO PROCESS**: "${newMessage}"
+3. **THINK BEFORE REPLYING**: Use the search results to decode what the user really wants. Are they joking? Is it a reference to a movie? Is it a common Manglish phrase? 
+4. **THE REPLY**: Craft a short, natural, and witty reply as a best friend.
+
+LANGUAGE RULES:
+- Reply **ONLY** in Manglish (Malayalam written in English letters).
+- Use casual slang like "eda", "aliya", "machane", "scene", "polichu", "pinnalla", "kidilam", "vibe", "power aanu".
+- Avoid formal language. Don't be too polite. Talk like an equal.
+- NEVER use Malayalam script (മലയാളം). Only English letters.
+- NEVER mention that you searched for anything. No "Based on my search...".
+
 ${personalityPrompt}
 
-For every message:
-1. Use search_web to understand what the user said and get context.
-2. Reply naturally like a close friend would — short, casual, funny, with emojis.
-3. Never explain what you searched. Never translate. Just react and reply.
+Keep it short and punchy. Use emojis only where a real friend would (one or two maximum).
 `.trim();
     }
 
@@ -51,15 +62,16 @@ For every message:
             const webSearch = tool(
                 async ({ query }: { query: string }) => {
                     try {
+                        console.log(`[AI] Researching: "${query}"`);
                         const results = await this.searchTool.invoke(query);
-                        return results || "No results found.";
+                        return results || "No results found. Use your own knowledge of Kerala culture.";
                     } catch {
                         return "Search failed, use your own knowledge.";
                     }
                 },
                 {
                     name: "search_web",
-                    description: "Search to understand the user's message — slang, context, news, anything. Use the result to craft a natural Manglish reply. Never show search results to the user.",
+                    description: "MANDATORY: Use this to understand the exact meaning of user's input, context, or any Manglish slang before crafting a reply.",
                     schema: z.object({
                         query: z.string()
                     }),
@@ -107,12 +119,13 @@ For every message:
 
     private cleanReply(reply: string): string {
         return reply
+            .replace(/<thought>[\s\S]*?<\/thought>/gi, '') // Remove internal thinking
             .replace(/<function[^>]*>[\s\S]*?<\/function>/gi, '')
             .replace(/<function[^>]*\/>/gi, '')
             .replace(/<tool[^>]*>[\s\S]*?<\/tool>/gi, '')
-            .replace(/<[^>]+>/g, '')
-            .replace(/\{[\s\S]*?"query"[\s\S]*?\}/g, '')
-            .replace(/^(assistant|bot|ai|chunk|nithin):\s*/i, '')
+            .replace(/<[^>]+>/g, '') // Remove any other XML-like tags
+            .replace(/\{[\s\S]*?"query"[\s\S]*?\}/g, '') // Remove leaked JSON objects
+            .replace(/^(assistant|bot|ai|chunk|nithin|system|mallu|malayali|friend):\s*/i, '')
             .replace(/^"|"$/g, '')
             .replace(/\n{3,}/g, '\n')
             .trim();
