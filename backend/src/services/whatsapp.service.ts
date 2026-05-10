@@ -14,12 +14,12 @@ interface SessionData {
 }
 
 export class WhatsappService extends EventEmitter implements IWhatsappService {
-    private antiSpamService: any; 
-    private aiService: any;       
-    private contactRepo: any;     
-    private personalityRepo: any; 
-    private messageRepo: any;     
-    
+    private antiSpamService: any;
+    private aiService: any;
+    private contactRepo: any;
+    private personalityRepo: any;
+    private messageRepo: any;
+
     private sessions: Map<string, SessionData> = new Map();
     private messageBuffers: Map<string, string[]> = new Map();
     private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
@@ -34,12 +34,12 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
     }
 
     private getChromePath(): string | undefined {
-        // Explicit environment override
+
         if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
 
         const isWin = process.platform === 'win32';
-        
-        // Check Common Windows Installation Paths
+
+
         if (isWin) {
             const winPaths = [
                 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
@@ -61,7 +61,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             }
         }
 
-        // Fallback to Puppeteer local cache
+
         const cacheDir = path.resolve(process.cwd(), '.cache', 'puppeteer', 'chrome');
         if (fs.existsSync(cacheDir)) {
             try {
@@ -74,7 +74,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                         if (fs.existsSync(fullPath)) return fullPath;
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
         }
 
         return undefined;
@@ -93,8 +93,8 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                     headless: true,
                     executablePath: this.getChromePath(),
                     args: [
-                        '--no-sandbox', 
-                        '--disable-setuid-sandbox', 
+                        '--no-sandbox',
+                        '--disable-setuid-sandbox',
                         '--disable-dev-shm-usage',
                         '--disable-accelerated-2d-canvas',
                         '--no-first-run',
@@ -158,7 +158,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 session.isReady = true;
                 session.isAuthenticated = true;
                 session.lastQr = null;
-                
+
                 // Fetch info after ready
                 if (session.client.info) {
                     session.account = {
@@ -208,7 +208,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             });
         }
 
-        // ONLY REPLY IF ENABLED
+
         if (!contact.botEnabled) {
             console.log(`[WhatsApp] Bot is DISABLED for ${phoneNumber} (${contact.name}). Ignoring.`);
             return;
@@ -220,7 +220,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             return;
         }
 
-        // Buffer multiple rapid messages together (debounce 5 seconds)
+
         const bufferKey = `${sessionId}:${from}`;
         let buffer = this.messageBuffers.get(bufferKey) || [];
         buffer.push(body);
@@ -238,11 +238,11 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             const snippet = merged.length > 30 ? merged.substring(0, 30) + '...' : merged;
             this.emit('sync-update', { sessionId, message: `Message from ${contact.name}: "${snippet}"`, progress: 0 });
 
-            // ── Step 1: Load conversation history ───────────────────────────
+
             let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
             try {
                 const pastMessages = await this.messageRepo.getLastTen(contact._id);
-                // getLastTen returns newest first, so reverse for chronological order
+
                 history = pastMessages.reverse().map((m: { role: string; content: string }) => ({
                     role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
                     content: m.content
@@ -315,7 +315,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 const formatted = phone.includes('@') ? phone : `${phone}@c.us`;
                 // Check if page is still alive before calling
                 if (firstSession.client.pupPage?.isClosed()) {
-                   return null;
+                    return null;
                 }
                 const url = await firstSession.client.getProfilePicUrl(formatted);
                 this.dpCache.set(phone, { url, timestamp: now });
@@ -367,7 +367,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 }
             }
 
-            
+
             const seenPhones = new Set<string>();
             const savedContacts = results.filter(r => {
                 if (r.isGroup) return false;
@@ -392,7 +392,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
             console.log(`[WhatsApp] Saved (named) contacts after filter: ${savedContacts.length} / ${results.length}`);
             this.emit('sync-update', { sessionId, message: `Found ${savedContacts.length} saved contacts. Sanitizing database...`, progress: 5 });
 
-            
+
             const enabledPhones = new Set<string>();
             try {
                 const results = await this.contactRepo.findAll({ botEnabled: true });
@@ -476,7 +476,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
                 console.error(`[WhatsApp] Logout error for ${sessionId}:`, err);
             }
         }
-        
+
         // As requested: clear all data related to the user on logout
         console.log(`[WhatsApp] Wiping user data (contacts, personalities, messages) for session: ${sessionId}`);
         try {
@@ -494,7 +494,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
     async refreshQr(sessionId: string): Promise<void> {
         const session = this.sessions.get(sessionId);
         if (!session || session.isRefreshing) return;
-        
+
         try {
             session.isRefreshing = true;
             session.isReady = false;
@@ -511,13 +511,13 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
 
     async getPairingCode(sessionId: string, phoneNumber: string): Promise<string> {
         const session = await this.getOrInitSession(sessionId);
-        
+
         // Ensure format is numeric and includes country code
         let formatted = phoneNumber.replace(/\D/g, '');
         if (formatted.length === 10) formatted = '91' + formatted; // Default to India if 10 digits
-        
+
         console.log(`[WhatsApp] Requesting pairing code for ${formatted} (Session: ${sessionId})`);
-        
+
         try {
             return await session.client.requestPairingCode(formatted);
         } catch (err) {
@@ -528,11 +528,11 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
 
     getSessionStatus(sessionId: string) {
         const session = this.sessions.get(sessionId);
-        
+
         if (!session) return { status: 'disconnected', account: null };
 
         let status: 'disconnected' | 'initializing' | 'qr-ready' | 'authenticated' | 'connected' = 'initializing';
-        
+
         if (session.isReady) status = 'connected';
         else if (session.isAuthenticated) status = 'authenticated';
         else if (session.lastQr) status = 'qr-ready';
