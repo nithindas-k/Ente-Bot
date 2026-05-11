@@ -6,13 +6,13 @@ import fs from 'fs';
 function getProductionChromePath() {
     if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
     
-    // Check if we downloaded it into .cache during Render build
+
     const cacheDir = path.resolve(process.cwd(), '.cache', 'puppeteer', 'chrome');
     if (fs.existsSync(cacheDir)) {
         try {
             const folders = fs.readdirSync(cacheDir);
             for (const folder of folders) {
-                // Render Linux path
+    
                 const linuxPath = path.join(cacheDir, folder, 'chrome-linux64', 'chrome');
                 if (fs.existsSync(linuxPath)) {
                     return linuxPath;
@@ -27,7 +27,7 @@ function getProductionChromePath() {
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Common local paths for Windows
+
 const localChromePath = path.resolve(process.cwd(), 'chrome', 'win64-146.0.7680.80', 'chrome-win64', 'chrome.exe');
 const finalChromePath = isProduction ? getProductionChromePath() : (fs.existsSync(localChromePath) ? localChromePath : undefined);
 

@@ -455,9 +455,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
     }
 
     async sendMessage(to: string, content: string): Promise<void> {
-        // Default session or look up? Needs a way to know which session to use.
-        // For simplicity, we'll use the first active session if not specified, 
-        // but this should be refactored to take sessionId.
+
         const firstSession = Array.from(this.sessions.values()).find(s => s.isReady);
         if (firstSession) {
             await firstSession.client.sendMessage(to, content);
