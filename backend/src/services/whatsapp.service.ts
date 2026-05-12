@@ -351,7 +351,7 @@ export class WhatsappService extends EventEmitter implements IWhatsappService {
         try {
             this.emit('sync-update', { sessionId, message: 'Starting contact synchronization...', progress: 0 });
 
-            // Step 1: Fetch all contacts from WhatsApp
+
             let results: any[] = [];
             try {
                 results = await session.client.getContacts();
